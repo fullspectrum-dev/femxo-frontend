@@ -14,5 +14,7 @@ export { Skeleton } from "./components/Skeleton";
 export { EmptyState, ErrorState } from "./components/States";
 export { Stepper } from "./components/Stepper";
 export { Tabs } from "./components/Tabs";
+export { TextField } from "./components/TextField";
+export type { TextFieldProps } from "./components/TextField";
 export type { TabItem } from "./components/Tabs";
 export { ToastProvider, useToast } from "./components/Toast";

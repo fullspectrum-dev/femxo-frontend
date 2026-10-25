@@ -17,6 +17,6 @@ test("pages use the shared design tokens (cream canvas, Inter text, Space Grotes
   expect(body.background).toBe("rgb(255, 250, 244)"); // --color-canvas
   expect(body.color).toBe("rgb(18, 7, 31)"); // --color-ink
   expect(body.font).toMatch(/Inter/);
-  const heading = await page.getByRole("heading", { level: 1 }).evaluate((el) => getComputedStyle(el).fontFamily);
+  const heading = await page.getByRole("heading", { level: 2, name: "Today's deals" }).evaluate((el) => getComputedStyle(el).fontFamily);
   expect(heading).toMatch(/Space Grotesk/);
 });

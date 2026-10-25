@@ -7,7 +7,7 @@ import { Header } from "../components/Header";
 import { TOP_CATEGORIES } from "../categories";
 
 let pathname = "/";
-vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
+vi.mock("next/navigation", () => ({ usePathname: () => pathname, useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
 
 describe("Header", () => {
   it("links the logo home", () => {
@@ -20,7 +20,7 @@ describe("Header", () => {
     const form = screen.getByRole("search");
     expect(form).toHaveAttribute("action", "/search");
     expect(form).toHaveAttribute("method", "get");
-    expect(within(form).getByRole("searchbox", { name: "Search Femxo" })).toHaveAttribute("name", "q");
+    expect(within(form).getByRole("combobox", { name: "Search Femxo" })).toHaveAttribute("name", "q");
     expect(within(form).getByRole("button", { name: "Search" })).toHaveAttribute("type", "submit");
   });
 

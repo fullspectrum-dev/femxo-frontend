@@ -1,44 +1,15 @@
 "use client";
 
 import { apiMode } from "@femxo/shared";
-import { createMockAdapter, createIdbStore, createMemoryStore, createRouter } from "@femxo/shared/mock";
-import type { IdempotencyRecord } from "@femxo/shared/mock";
-import { buildCatalog, buildInitialState, createDemoControls } from "@femxo/shared/demo";
-import type { MockState } from "@femxo/shared/demo";
+import { createMockBackend } from "@femxo/shared/demo";
 
 /**
- * The browser's mock backend: state in IndexedDB, the REST-shaped adapter,
- * and the demo controls that act on it. Built once, on first use; handlers
- * are added module by module as the storefront grows.
+ * The browser's mock backend (state in IndexedDB), built once on first use.
+ * Only exists in mock mode. In `http` mode there is nothing to build.
  */
-function build() {
-  const catalog = buildCatalog();
-  const seed = () => buildInitialState(catalog, new Date());
-  const inBrowser = typeof indexedDB !== "undefined";
-  const store = inBrowser ? createIdbStore<MockState>({ dbName: "femxo-demo", version: 1, seed }) : createMemoryStore(seed);
-  const noKeys = (): Record<string, IdempotencyRecord> => ({});
-  const idempotency = inBrowser
-    ? createIdbStore({ dbName: "femxo-demo-keys", version: 1, seed: noKeys })
-    : createMemoryStore(noKeys);
+let backend: ReturnType<typeof createMockBackend> | undefined;
 
-  const holder: { adapter?: ReturnType<typeof createMockAdapter<MockState>> } = {};
-  const controls = createDemoControls(() => ({
-    forceNext: (outcome) => holder.adapter!.controls.forceNext(outcome),
-    clock: holder.adapter!.controls.clock,
-    reload: () => holder.adapter!.controls.reload(),
-    resetStores: async () => {
-      await store.reset();
-      await idempotency.reset();
-    },
-  }));
-  holder.adapter = createMockAdapter<MockState>({
-    router: createRouter<MockState>(),
-    store,
-    idempotencyStore: idempotency,
-    chaos: controls.chaos,
-  });
-  return { adapter: holder.adapter, controls, catalog };
+export function getMockRuntime() {
+  if (apiMode !== "mock") return null;
+  return (backend ??= createMockBackend({ storage: typeof indexedDB === "undefined" ? "memory" : "idb" }));
 }
-
-let runtime: ReturnType<typeof build> | undefined;
-export const getMockRuntime = () => (apiMode === "mock" ? (runtime ??= build()) : null);

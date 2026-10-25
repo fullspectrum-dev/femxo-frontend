@@ -66,10 +66,11 @@ export function createDemoControls(target: () => DemoTarget) {
       publish();
     },
     async reset() {
+      // The clock goes first: the fresh seed is dated from it.
+      target().clock.reset();
       await target().resetStores();
       target().reload();
       nextPayment = null;
-      target().clock.reset();
       publish();
     },
     snapshot: () => snapshot,

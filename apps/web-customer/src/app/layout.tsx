@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import type { ReactNode } from "react";
 import { OfflineBanner, ToastProvider } from "@femxo/ui";
+import { SessionProvider } from "@/features/auth/components/SessionProvider";
 import { DemoPanelHost } from "@/features/devtools/components/DemoPanelHost";
 import { BottomBar } from "@/features/shell/components/BottomBar";
 import { CategoryNav } from "@/features/shell/components/CategoryNav";
@@ -34,15 +35,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <ToastProvider>
-          <Header cartCount={0} />
-          <CategoryNav categories={TOP_CATEGORIES} />
-          <OfflineBanner />
-          <main id="main" tabIndex={-1} className="flex-1 outline-none">
-            {children}
-          </main>
-          <Footer />
-          <BottomBar categories={TOP_CATEGORIES} />
-          <DemoPanelHost />
+          <SessionProvider>
+            <Header cartCount={0} />
+            <CategoryNav categories={TOP_CATEGORIES} />
+            <OfflineBanner />
+            <main id="main" tabIndex={-1} className="flex-1 outline-none">
+              {children}
+            </main>
+            <Footer />
+            <BottomBar categories={TOP_CATEGORIES} />
+            <DemoPanelHost />
+          </SessionProvider>
         </ToastProvider>
       </body>
     </html>

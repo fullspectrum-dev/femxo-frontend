@@ -81,8 +81,33 @@ export interface MockState {
   tickets: Record<string, Ticket[]>;
   /** Stock after orders placed in this browser, by variant id (absent = seed stock). */
   stock: Record<string, number>;
-  /** Filled by later modules (carts, OTP challenges, sessions). */
+  /** Filled by later modules (carts). */
   carts: Record<string, unknown>;
-  otp: Record<string, unknown>;
-  sessions: Record<string, unknown>;
+  otp: { challenges: Record<string, OtpChallengeRecord>; byMobile: Record<string, OtpMobileRecord> };
+  sessions: Record<string, SessionRecord>;
+  /**
+   * The httpOnly refresh cookie. A browser keeps it out of page code; here
+   * only the mock's auth handlers read it, never the UI.
+   */
+  refreshCookie: string | null;
+}
+
+export interface OtpChallengeRecord {
+  mobile: string;
+  createdAt: number;
+  wrongAttempts: number;
+}
+
+/** Per-number OTP bookkeeping: resends and the 15-minute lockout. */
+export interface OtpMobileRecord {
+  sends: number;
+  lastSentAt: number;
+  lockedUntil: number | null;
+}
+
+export interface SessionRecord {
+  customerId: string;
+  refreshToken: string;
+  /** Rotated-out refresh tokens: seeing one again means it was copied. */
+  usedRefreshTokens: string[];
 }

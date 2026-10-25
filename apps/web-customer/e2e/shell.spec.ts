@@ -16,8 +16,8 @@ test("the shell has its landmarks and a working skip link", async ({ page }) => 
 
 test("search sends the query to /search", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("searchbox", { name: "Search Femxo" }).fill("atta");
-  await page.getByRole("searchbox", { name: "Search Femxo" }).press("Enter");
+  await page.getByRole("combobox", { name: "Search Femxo" }).fill("atta");
+  await page.getByRole("combobox", { name: "Search Femxo" }).press("Enter");
   await expect(page).toHaveURL(/\/search\?q=atta$/);
 });
 

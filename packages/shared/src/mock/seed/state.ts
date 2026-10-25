@@ -231,7 +231,8 @@ export function buildInitialState(catalog: Catalog, now: Date): MockState {
     tickets: {},
     stock: {},
     carts: {},
-    otp: {},
+    otp: { challenges: {}, byMobile: {} },
     sessions: {},
+    refreshCookie: null,
   };
 }

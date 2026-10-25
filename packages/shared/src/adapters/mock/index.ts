@@ -1,4 +1,4 @@
-export { errorBody, MockHttpError } from "./errors";
+export { errorBody, failure, MockHttpError } from "./errors";
 export { createMockAdapter } from "./mock-adapter";
 export type { ForcedOutcome, IdempotencyRecord, MockAdapter, MockAdapterOptions } from "./mock-adapter";
 export { paginate } from "./pagination";

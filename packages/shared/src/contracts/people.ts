@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IsoDate, IsoDateTime, MobileNumber, Paise } from "./common";
+import { IsoDate, IsoDateTime, MobileNumber, Paise, page } from "./common";
 import { OrderSummary, PaymentIntent } from "./commerce";
 
 // ---------- Auth and profile ----------
@@ -107,6 +107,10 @@ export const ReviewSummary = z.object({
   histogram: z.tuple([z.number().int(), z.number().int(), z.number().int(), z.number().int(), z.number().int()]),
 });
 export type ReviewSummary = z.infer<typeof ReviewSummary>;
+
+/** A page of a product's reviews, newest first, with the summary over all of them. */
+export const ReviewList = page(Review).extend({ summary: ReviewSummary });
+export type ReviewList = z.infer<typeof ReviewList>;
 
 // ---------- Support ----------
 
