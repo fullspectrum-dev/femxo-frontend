@@ -67,12 +67,14 @@ export function Header() {
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
             {/* The storefront is its own site, so this is a plain link, not a client-side navigation. */}
-            <a
-              href={CUSTOMER_SIGN_IN_URL}
-              className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/70 lg:inline-flex"
-            >
-              Customer sign in
-            </a>
+            {CUSTOMER_SIGN_IN_URL ? (
+              <a
+                href={CUSTOMER_SIGN_IN_URL}
+                className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/70 lg:inline-flex"
+              >
+                Customer sign in
+              </a>
+            ) : null}
             <Link
               href="/login"
               className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground xl:inline-flex"
@@ -130,9 +132,11 @@ export function Header() {
               ))}
             </nav>
             <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border/60 pt-4">
-              <a href={CUSTOMER_SIGN_IN_URL} onClick={() => setIsMobileOpen(false)} className="btn-outline h-11">
-                Customer sign in
-              </a>
+              {CUSTOMER_SIGN_IN_URL ? (
+                <a href={CUSTOMER_SIGN_IN_URL} onClick={() => setIsMobileOpen(false)} className="btn-outline h-11">
+                  Customer sign in
+                </a>
+              ) : null}
               <Link
                 href="/login"
                 onClick={() => setIsMobileOpen(false)}

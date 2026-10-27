@@ -8,6 +8,8 @@ export interface DemoTarget {
   clock: Clock;
   reload(): void;
   resetStores(): Promise<void>;
+  /** Leaves one fewer of each carted item in stock than the cart holds. */
+  shortStockInCarts(): Promise<void>;
 }
 
 export interface DemoSnapshot {
@@ -44,6 +46,8 @@ export function createDemoControls(target: () => DemoTarget) {
       publish();
     },
     forceNext: (outcome: ForcedOutcome) => target().forceNext(outcome),
+    /** So the next order for what is in the carts is refused for stock (409), as if someone else bought it first. */
+    shortStockInCarts: () => target().shortStockInCarts(),
     setNextPayment(outcome: PaymentOutcome | null) {
       nextPayment = outcome;
       publish();

@@ -37,9 +37,11 @@ export function Footer() {
             <Link href="/careers" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
               Careers
             </Link>
-            <a href={CUSTOMER_SIGN_IN_URL} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Customer sign in
-            </a>
+            {CUSTOMER_SIGN_IN_URL ? (
+              <a href={CUSTOMER_SIGN_IN_URL} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                Customer sign in
+              </a>
+            ) : null}
             <Link href="/login" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
               Staff sign in
             </Link>

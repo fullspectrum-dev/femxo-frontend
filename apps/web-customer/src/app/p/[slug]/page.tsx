@@ -8,6 +8,7 @@ import { ProductBuyBox } from "@/features/product/components/ProductBuyBox";
 import { ProductReviews } from "@/features/product/components/ProductReviews";
 import { productJsonLd } from "@/features/product/json-ld";
 import { serverProducts } from "@/lib/server-api";
+import { t } from "@/i18n";
 
 /** Everything the page shows, fetched together and cached; the shopper-specific bits are refreshed in the browser. */
 async function getProductPage(slug: string) {
@@ -60,11 +61,11 @@ export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)).replace(/</g, "\\u003c") }} />
       <section className="mx-auto w-full max-w-7xl px-4 py-5">
-        <nav aria-label="Breadcrumb" className="mb-4 text-sm text-ink-muted">
+        <nav aria-label={t("nav.breadcrumb")} className="mb-4 text-sm text-ink-muted">
           <ol className="flex flex-wrap items-center gap-1">
             <li>
               <Link href="/" className="hover:text-primary hover:underline">
-                Home
+                {t("shell.nav.home")}
               </Link>
             </li>
             {product.breadcrumbs.map((crumb) => (
@@ -87,14 +88,14 @@ export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
         <div className="mt-8 grid gap-8 md:grid-cols-2">
           <section aria-labelledby="about-heading">
             <h2 id="about-heading" className="mb-2 text-base font-semibold">
-              About this product
+              {t("product.about")}
             </h2>
             <p className="text-sm">{product.description}</p>
           </section>
           {product.specs.length > 0 ? (
             <section aria-labelledby="specs-heading">
               <h2 id="specs-heading" className="mb-2 text-base font-semibold">
-                Details
+                {t("product.details")}
               </h2>
               <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
                 {product.specs.map((spec) => (
@@ -104,8 +105,8 @@ export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
                   </div>
                 ))}
                 <div className="contents">
-                  <dt className="text-ink-muted">Returns</dt>
-                  <dd>{product.returnable ? "Returnable" : "Not returnable"}</dd>
+                  <dt className="text-ink-muted">{t("product.returns")}</dt>
+                  <dd>{product.returnable ? t("product.returnable") : t("product.notReturnable")}</dd>
                 </div>
               </dl>
             </section>
@@ -114,7 +115,7 @@ export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
       </section>
 
       <ProductReviews slug={product.slug} initial={reviews} />
-      <ProductRail title="You may also like" products={related} />
+      <ProductRail title={t("product.related")} products={related} />
     </>
   );
 }

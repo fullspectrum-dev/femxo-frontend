@@ -127,6 +127,27 @@ pnpm --filter @femxo/web test:e2e:demo:production   # demo mode on a production 
 pnpm build
 ```
 
+## Deploying on Vercel
+
+The repository holds two Next.js apps and no Next.js at the root, so Vercel needs **one
+project per app, each with its Root Directory set**. Without that, the build stops with
+"No Next.js version detected".
+
+| Project | Root Directory | Environment variables |
+|---|---|---|
+| Website + admin | `apps/web` | `NEXT_PUBLIC_STORE_URL` = the storefront project's address (e.g. `https://shop.femxo.in`, no trailing slash) |
+| Customer storefront | `apps/web-customer` | none needed for demo data (`NEXT_PUBLIC_API_MODE` defaults to `mock`) |
+
+For both projects: keep "Include source files outside of the Root Directory" **on**
+(the apps import `packages/shared` and `packages/ui`); the install and build commands can
+stay at their defaults. Each app's `vercel.json` selects the Next.js framework and turns on
+Corepack, so the build uses the pinned pnpm 11 and Node 24 (`engines` in the root
+`package.json`).
+
+`NEXT_PUBLIC_*` values are baked in at build time: change one, then redeploy. If
+`NEXT_PUBLIC_STORE_URL` is missing in a production build, the website simply leaves out its
+"Customer sign in" links (it never points visitors at localhost).
+
 ## Deployment
 
 `pnpm build:web` produces a self-contained server in

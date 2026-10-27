@@ -13,11 +13,19 @@ export const SITE = {
 } as const;
 
 /**
- * Where the customer storefront runs (its own site, its own port locally). Set NEXT_PUBLIC_STORE_URL at
- * build time for any other address; no trailing slash.
+ * Where the customer storefront runs: its own site (its own Vercel project, its own port locally).
+ * Set NEXT_PUBLIC_STORE_URL at build time. Without it, local development and tests use the local
+ * storefront, but a production build has no address: "Customer sign in" is left out rather than
+ * sending visitors to localhost.
  */
-export const STORE_URL = (process.env.NEXT_PUBLIC_STORE_URL || "http://localhost:3002").replace(/\/$/, "");
-export const CUSTOMER_SIGN_IN_URL = `${STORE_URL}/login`;
+export function resolveStoreUrl(configured: string | undefined, nodeEnv: string | undefined): string | null {
+  const url = configured?.trim().replace(/\/$/, "");
+  if (url) return url;
+  return nodeEnv === "production" ? null : "http://localhost:3002";
+}
+
+export const STORE_URL = resolveStoreUrl(process.env.NEXT_PUBLIC_STORE_URL, process.env.NODE_ENV);
+export const CUSTOMER_SIGN_IN_URL = STORE_URL ? `${STORE_URL}/login` : null;
 
 export const NAV_LINKS: readonly NavLink[] = [
   { label: "Why Femxo", href: "#why" },

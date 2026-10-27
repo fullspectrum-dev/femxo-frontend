@@ -9,6 +9,7 @@ function setup() {
     clock,
     reload: vi.fn(),
     resetStores: vi.fn(async () => undefined),
+    shortStockInCarts: vi.fn(async () => undefined),
   };
   return { controls: createDemoControls(() => target), target, clock };
 }

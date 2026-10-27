@@ -16,12 +16,43 @@ export interface MockBackendOptions {
   realNow?: () => number;
 }
 
+const CLOCK_KEY = "femxo-demo-clock-offset";
+
+/** The demo clock, in a browser keeping its fast-forward across reloads (an order that has "shipped" stays shipped). */
+function createPersistentClock(realNow?: () => number) {
+  let saved = 0;
+  try {
+    const stored = Number(localStorage.getItem(CLOCK_KEY));
+    saved = Number.isFinite(stored) ? stored : 0;
+  } catch {
+    // No storage (server, private mode): the clock simply starts at now.
+  }
+  const clock = createClock(realNow, saved);
+  const remember = () => {
+    try {
+      localStorage.setItem(CLOCK_KEY, String(clock.offset()));
+    } catch {
+      // Not remembered; harmless.
+    }
+  };
+  const { advance, reset } = clock;
+  clock.advance = (ms) => {
+    advance(ms);
+    remember();
+  };
+  clock.reset = () => {
+    reset();
+    remember();
+  };
+  return clock;
+}
+
 /**
  * The whole mock backend: seeded state, the REST-shaped adapter and the demo
  * controls that act on it. The browser builds one; tests build their own.
  */
 export function createMockBackend({ storage, latency = { min: 300, max: 600 }, realNow }: MockBackendOptions) {
-  const clock = createClock(realNow);
+  const clock = storage === "idb" ? createPersistentClock(realNow) : createClock(realNow);
   const catalog = buildCatalog();
   const seed = () => buildInitialState(catalog, new Date(clock.now()));
   const noKeys = (): Record<string, IdempotencyRecord> => ({});
@@ -37,8 +68,16 @@ export function createMockBackend({ storage, latency = { min: 300, max: 600 }, r
       await store.reset();
       await idempotency.reset();
     },
+    shortStockInCarts: async () => {
+      const state = await store.load();
+      for (const cart of Object.values(state.carts)) {
+        for (const line of cart.lines) state.stock[line.variantId] = Math.max(0, line.quantity - 1);
+      }
+      await store.save(state);
+      holder.adapter!.controls.reload();
+    },
   }));
-  const adapter = createMockAdapter<MockState>({ router: buildMockRouter(catalog), store, idempotencyStore: idempotency, clock, latency, chaos: controls.chaos });
+  const adapter = createMockAdapter<MockState>({ router: buildMockRouter(catalog, controls), store, idempotencyStore: idempotency, clock, latency, chaos: controls.chaos });
   holder.adapter = adapter;
 
   return { adapter, controls, catalog, store, clock };

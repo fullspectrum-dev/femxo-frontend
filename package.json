@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "pnpm --parallel --filter @femxo/web --filter @femxo/web-customer dev",
     "dev:web": "pnpm --filter @femxo/web dev",

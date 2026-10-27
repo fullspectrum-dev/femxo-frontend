@@ -4,9 +4,28 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ChevronRight } from "lucide-react";
-import { Skeleton } from "@femxo/ui";
+import type { SearchResult } from "@femxo/shared/contracts";
+import { ProductCard } from "@/features/catalog/components/ProductCard";
 import { ProductListing } from "@/features/catalog/components/ProductListing";
 import { serverProducts, serverSearch } from "@/lib/server-api";
+import { t } from "@/i18n";
+
+/**
+ * What the listing looks like before it hydrates: the first page, as plain HTML. The listing reads the address
+ * bar, so the static page can only carry this fallback; with a skeleton here the product pictures (the largest
+ * thing on screen) would not exist until the scripts had run.
+ */
+function FirstPage({ initial }: { initial: SearchResult }) {
+  return (
+    <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+      {initial.items.map((product, index) => (
+        <li key={product.id}>
+          <ProductCard product={product} priority={index < 2} />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /** Everything the page needs for one category: its place in the tree, and the first page of products. */
 async function getCategoryPage(slug: string) {
@@ -46,11 +65,11 @@ export default async function CategoryPage({ params }: PageProps<"/c/[category]"
 
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-5">
-      <nav aria-label="Breadcrumb" className="mb-3 text-sm text-ink-muted">
+      <nav aria-label={t("nav.breadcrumb")} className="mb-3 text-sm text-ink-muted">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
             <Link href="/" className="hover:text-primary hover:underline">
-              Home
+              {t("shell.nav.home")}
             </Link>
           </li>
           {parent ? (
@@ -71,7 +90,7 @@ export default async function CategoryPage({ params }: PageProps<"/c/[category]"
       <h1 className="font-display text-2xl font-bold md:text-3xl">{category.name}</h1>
 
       {children.length > 0 ? (
-        <ul aria-label={`${category.name} subcategories`} className="my-4 flex flex-wrap gap-2">
+        <ul aria-label={t("category.subcategories", { name: category.name })} className="my-4 flex flex-wrap gap-2">
           {children.map((child) => (
             <li key={child.id}>
               <Link
@@ -87,8 +106,8 @@ export default async function CategoryPage({ params }: PageProps<"/c/[category]"
 
       <div className="mt-4">
         {/* The listing reads the address bar (filters, sort), so it sits in Suspense and the page stays static. */}
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <ProductListing categorySlug={category.slug} initial={initial} />
+        <Suspense fallback={<FirstPage initial={initial} />}>
+          <ProductListing categorySlug={category.slug} initial={initial} firstPage={<FirstPage initial={initial} />} />
         </Suspense>
       </div>
     </section>
