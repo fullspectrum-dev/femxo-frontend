@@ -41,7 +41,7 @@ export function Logo({ className, priority }: LogoProps) {
         <span className="font-display text-xl font-bold tracking-tight text-foreground">
           Femxo
         </span>
-        <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="mt-1 text-[8px] font-semibold uppercase tracking-[0.08em] text-muted-foreground min-[360px]:text-[9px] min-[360px]:tracking-[0.18em]">
           Consultancy Services
         </span>
       </span>

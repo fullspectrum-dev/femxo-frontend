@@ -8,6 +8,7 @@ import { Container } from "@/components/shared/Container";
 import { Logo } from "@/components/shared/Logo";
 import { CUSTOMER_SIGN_IN_URL, NAV_LINKS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { SignInMenu } from "@/components/layout/SignInMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function Header() {
@@ -43,7 +44,7 @@ export function Header() {
       )}
     >
       <Container>
-        <div className="flex h-16 items-center justify-between gap-3 lg:h-20">
+        <div className="flex h-16 items-center justify-between gap-2 min-[480px]:gap-3 lg:h-20">
           <Logo priority />
 
           <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex" aria-label="Main">
@@ -52,7 +53,7 @@ export function Header() {
                 key={link.href}
                 href={sectionHref(link.href)}
                 className={cn(
-                  "whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors xl:px-3.5",
+                  "whitespace-nowrap rounded-lg px-2 py-2 text-sm font-medium transition-colors xl:px-3.5",
                   link.highlight
                     ? "mx-1 inline-flex items-center gap-2 rounded-full border border-gold-400/60 bg-gold-400/10 font-semibold text-gold hover:bg-gold-400/20"
                     : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
@@ -64,27 +65,31 @@ export function Header() {
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 min-[480px]:gap-2">
             <ThemeToggle />
-            {/* The storefront is its own site, so this is a plain link, not a client-side navigation. */}
+            {/*
+              Signing in is always in the bar, at every screen size. Wide screens have room for both ways in as links;
+              everywhere else one "Sign in" button opens them. (Without a storefront address there is only the staff
+              sign-in, which the button shows as a plain link at every size.)
+            */}
+            <SignInMenu customerUrl={CUSTOMER_SIGN_IN_URL} className={CUSTOMER_SIGN_IN_URL ? "xl:hidden" : undefined} />
             {CUSTOMER_SIGN_IN_URL ? (
-              <a
-                href={CUSTOMER_SIGN_IN_URL}
-                className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/70 lg:inline-flex"
-              >
-                Customer sign in
-              </a>
+              <>
+                {/* The storefront is its own site, so this is a plain link, not a client-side navigation. */}
+                <a
+                  href={CUSTOMER_SIGN_IN_URL}
+                  className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/70 xl:inline-flex"
+                >
+                  Customer sign in
+                </a>
+                <Link
+                  href="/login"
+                  className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground xl:inline-flex"
+                >
+                  Staff sign in
+                </Link>
+              </>
             ) : null}
-            <Link
-              href="/login"
-              className={cn(
-                "hidden h-10 items-center rounded-xl px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground",
-                // Beside "Customer sign in" it needs the room of a wide screen; on its own it shows from the desktop layout up.
-                CUSTOMER_SIGN_IN_URL ? "xl:inline-flex" : "lg:inline-flex"
-              )}
-            >
-              Staff sign in
-            </Link>
             <Link href={sectionHref("#contact")} className="btn-gold hidden h-10 px-4 lg:inline-flex">
               {/* One flex item, so the button's gap doesn't split the words. */}
               <span>
