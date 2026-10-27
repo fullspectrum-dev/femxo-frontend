@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 test("the home page leads with offers, categories and deals", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("region", { name: "Offers" }).getByRole("link")).toHaveCount(3);
+  await expect(page.getByRole("region", { name: "Offers" }).getByRole("link")).toHaveCount(4);
   await expect(page.getByRole("navigation", { name: "Shop by category" }).last().getByRole("link")).toHaveCount(8);
   const deals = page.getByRole("region", { name: "Today's deals" });
   await expect(deals.getByRole("listitem")).toHaveCount(8);
