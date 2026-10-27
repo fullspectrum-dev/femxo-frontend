@@ -77,7 +77,11 @@ export function Header() {
             ) : null}
             <Link
               href="/login"
-              className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground xl:inline-flex"
+              className={cn(
+                "hidden h-10 items-center rounded-xl px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground",
+                // Beside "Customer sign in" it needs the room of a wide screen; on its own it shows from the desktop layout up.
+                CUSTOMER_SIGN_IN_URL ? "xl:inline-flex" : "lg:inline-flex"
+              )}
             >
               Staff sign in
             </Link>

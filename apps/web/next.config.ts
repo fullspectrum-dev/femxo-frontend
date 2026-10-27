@@ -25,6 +25,15 @@ const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+// The storefront is its own site (its own Vercel project). Without its address, the header can't offer
+// "Customer sign in" (see src/lib/constants.ts), so say so loudly instead of shipping without it unnoticed.
+if (process.env.NODE_ENV === "production" && !process.env.NEXT_PUBLIC_STORE_URL?.trim()) {
+  console.warn(
+    "[femxo] NEXT_PUBLIC_STORE_URL is not set: this build has no \"Customer sign in\" link. " +
+      "Set it to the storefront address (for example https://shop.femxo.in) and redeploy."
+  );
+}
+
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // A self-contained server in .next/standalone, for the Docker image.
