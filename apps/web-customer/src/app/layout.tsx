@@ -14,6 +14,7 @@ import { Footer } from "@/features/shell/components/Footer";
 import { Header } from "@/features/shell/components/Header";
 import { TOP_CATEGORIES } from "@/features/shell/categories";
 import "./globals.css";
+import { ICONS } from "./icons";
 import { t } from "@/i18n";
 
 const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-space-grotesk", display: "swap" });
@@ -24,6 +25,7 @@ export const metadata: Metadata = {
   description: "Shop staples, daily needs and Prime deals from Femxo across Bihar.",
   // Not public yet: keep the placeholder out of search until launch.
   robots: { index: false, follow: false },
+  icons: ICONS,
 };
 
 export const viewport: Viewport = {
