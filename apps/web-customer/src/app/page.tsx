@@ -6,6 +6,7 @@ import { BannerRow } from "@/features/catalog/components/BannerRow";
 import { CategoryTiles } from "@/features/catalog/components/CategoryTiles";
 import { ProductRail } from "@/features/catalog/components/ProductRail";
 import { serverProducts } from "@/lib/server-api";
+import { t } from "@/i18n";
 
 async function getHome() {
   "use cache";
@@ -17,12 +18,12 @@ export default async function HomePage() {
   const home = await getHome();
   return (
     <>
-      <h1 className="sr-only">Femxo store</h1>
+      <h1 className="sr-only">{t("home.title")}</h1>
       <BannerRow banners={home.banners} />
       <CategoryTiles categories={home.featuredCategories} />
-      <ProductRail title="Today's deals" products={home.deals} seeAllHref="/search?sort=discount" />
+      <ProductRail title={t("home.deals")} products={home.deals} seeAllHref="/search?sort=discount" />
       <PrimeStrip />
-      <ProductRail title="Prime picks" products={home.primePicks} seeAllHref="/search?prime=true" />
+      <ProductRail title={t("home.primePicks")} products={home.primePicks} seeAllHref="/search?prime=true" />
     </>
   );
 }
@@ -30,18 +31,18 @@ export default async function HomePage() {
 function PrimeStrip() {
   return (
     <section aria-labelledby="prime-strip" className="mx-auto w-full max-w-7xl px-4 py-4">
-      <div className="flex flex-col gap-4 rounded-card bg-primary-deep p-5 text-on-primary md:flex-row md:items-center md:justify-between md:p-6">
+      <div className="flex flex-col gap-4 rounded-card bg-primary-deep p-5 text-white md:flex-row md:items-center md:justify-between md:p-6">
         <div className="flex items-start gap-3">
           <Crown size={28} className="mt-0.5 flex-none text-gold" aria-hidden="true" />
           <div>
             <h2 id="prime-strip" className="font-display text-xl font-bold">
-              Femxo Prime
+              {t("home.primeStrip.title")}
             </h2>
-            <p className="mt-1 text-sm opacity-90">Member prices on every product, free delivery on all orders, and coupons only for members. From ₹99 a month.</p>
+            <p className="mt-1 text-sm opacity-90">{t("home.primeStrip.text")}</p>
           </div>
         </div>
         <Link href="/prime" className={buttonClasses({ variant: "gold", size: "lg", className: "flex-none" })}>
-          See Prime plans
+          {t("home.primeStrip.cta")}
         </Link>
       </div>
     </section>

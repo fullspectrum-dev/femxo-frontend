@@ -3,7 +3,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Container } from "@/components/shared/Container";
 import { Logo } from "@/components/shared/Logo";
-import { CONTACT, NAV_LINKS } from "@/lib/constants";
+import { CONTACT, CUSTOMER_SIGN_IN_URL, NAV_LINKS } from "@/lib/constants";
 
 // Only the year needs request time; keeping it in its own Suspense boundary
 // lets the rest of the footer stay in the prerendered shell.
@@ -37,8 +37,11 @@ export function Footer() {
             <Link href="/careers" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
               Careers
             </Link>
+            <a href={CUSTOMER_SIGN_IN_URL} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+              Customer sign in
+            </a>
             <Link href="/login" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-              Sign in
+              Staff sign in
             </Link>
             <a href={CONTACT.phoneHref} className="text-sm text-muted-foreground transition-colors hover:text-foreground">
               {CONTACT.phone}

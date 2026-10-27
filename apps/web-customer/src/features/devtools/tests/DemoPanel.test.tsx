@@ -7,7 +7,7 @@ import { DemoPanel } from "../components/DemoPanel";
 
 function setup() {
   const clock = createClock(() => 1_700_000_000_000);
-  const target = { forceNext: vi.fn(), clock, reload: vi.fn(), resetStores: vi.fn(async () => undefined) };
+  const target = { forceNext: vi.fn(), clock, reload: vi.fn(), resetStores: vi.fn(async () => undefined), shortStockInCarts: vi.fn(async () => undefined) };
   const controls = createDemoControls(() => target);
   return { controls, target, clock };
 }
@@ -29,6 +29,14 @@ describe("DemoPanel", () => {
     render(<DemoPanel controls={controls} mode="mock" />);
     const panel = await open();
     expect(panel).toHaveTextContent(/demo/i);
+  });
+
+  it("can make what is in the carts run short, to see the out-of-stock refusal", async () => {
+    const { controls, target } = setup();
+    render(<DemoPanel controls={controls} mode="mock" />);
+    await open();
+    await userEvent.click(screen.getByRole("button", { name: "Make cart items run short" }));
+    expect(target.shortStockInCarts).toHaveBeenCalledTimes(1);
   });
 
   it("switches random server errors on and off", async () => {

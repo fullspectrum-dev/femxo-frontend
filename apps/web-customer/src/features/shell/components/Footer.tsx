@@ -1,6 +1,7 @@
 import { apiMode, type ApiMode } from "@femxo/shared";
 import { DemoBadge } from "@femxo/ui";
 import Link from "next/link";
+import { t } from "@/i18n";
 
 const linkClasses = "rounded-sm hover:text-primary focus-visible:outline-2 focus-visible:outline-focus";
 
@@ -12,22 +13,22 @@ export function Footer({ mode = apiMode }: { mode?: ApiMode }) {
         <ul className="flex flex-wrap gap-x-6 gap-y-2">
           <li>
             <Link href="/prime" className={linkClasses}>
-              Femxo Prime
+              {t("shell.footer.prime")}
             </Link>
           </li>
           <li>
             <Link href="/account/support" className={linkClasses}>
-              Help &amp; support
+              {t("shell.footer.help")}
             </Link>
           </li>
           <li>
             <a href="https://femxo.in" className={linkClasses}>
-              About Femxo
+              {t("shell.footer.about")}
             </a>
           </li>
         </ul>
         <div className="flex flex-wrap items-center gap-3">
-          <p>© Femxo Consultancy Services Pvt. Ltd.</p>
+          <p>{t("shell.footer.copyright")}</p>
           {mode === "mock" ? <DemoBadge /> : null}
         </div>
       </div>

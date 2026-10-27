@@ -5,8 +5,8 @@ import type { Availability, HomeContent, ProductSummary } from "../../contracts/
 import { Pincode } from "../../contracts/common";
 import type { Review, ReviewSummary } from "../../contracts/people";
 import { SearchQuery } from "../../contracts/search";
-import type { StockLookup } from "../domain/mappers";
-import { toProductDetail, toProductSummary } from "../domain/mappers";
+import { stockFor, toProductDetail, toProductSummary } from "../domain/mappers";
+import { isPrimeMember } from "../domain/membership";
 import { createSearchIndex } from "../domain/search";
 import type { Catalog, MockState, SeedProduct } from "../domain/types";
 import { SEARCH_SYNONYMS } from "../seed/state";
@@ -33,12 +33,6 @@ export function toSearchQuery(query: MockQuery): SearchQuery {
     limit: number(query.limit),
   });
 }
-
-/** Stock as this browser sees it: the seed, less what its orders took. */
-const stockFor =
-  (state: MockState): StockLookup =>
-  (variant) =>
-    state.stock[variant.id] ?? variant.stock;
 
 const saving = (summary: ProductSummary) => (summary.mrp - summary.fromPrice) / summary.mrp;
 const primeSaving = (summary: ProductSummary) => (summary.fromPrice - summary.fromPrimePrice) / summary.fromPrice;
@@ -126,9 +120,7 @@ export function registerCatalogRoutes(router: MockRouter<MockState>, catalog: Ca
     let member = false;
     if (context.accessToken) {
       try {
-        const { customer } = authenticate(context);
-        const membership = context.state.memberships[customer.id];
-        member = Boolean(membership && Date.parse(membership.validTill) > context.clock.now());
+        member = isPrimeMember(context.state, authenticate(context).customer.id, context.clock.now());
       } catch {
         // An expired token just means the guest price.
       }

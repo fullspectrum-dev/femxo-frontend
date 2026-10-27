@@ -73,3 +73,35 @@ describe("design tokens", () => {
     expect([...missing]).toEqual([]);
   });
 });
+
+describe("dark palette", () => {
+  const dark = new Map(
+    [...(/\n\.dark\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "").matchAll(/--color-([a-z0-9-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1]!, m[2]!.trim()])
+  );
+
+  it("overrides every colour token the light theme defines", () => {
+    const light = [...tokens.keys()].filter((name) => name.startsWith("color-")).map((name) => name.slice(6));
+    expect(light.filter((name) => !dark.has(name))).toEqual([]);
+  });
+
+  it.each(TEXT_PAIRS_DARK())("%s text on %s passes AA (4.5:1) in dark", (fg, bg) => {
+    expect(contrastRatio(dark.get(fg)!, dark.get(bg)!)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([["line-input", "surface"], ["line-input", "canvas"], ["focus", "surface"], ["focus", "canvas"]])("%s against %s passes 3:1 in dark", (fg, bg) => {
+    expect(contrastRatio(dark.get(fg)!, dark.get(bg)!)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+function TEXT_PAIRS_DARK(): [string, string][] {
+  return [
+    ["ink", "canvas"], ["ink", "surface"], ["ink", "surface-sunken"],
+    ["ink-muted", "canvas"], ["ink-muted", "surface"], ["ink-muted", "surface-sunken"],
+    ["on-primary", "primary"], ["on-primary", "primary-hover"], ["on-gold", "gold"],
+    ["primary", "surface"], ["primary", "canvas"], ["primary", "primary-soft"],
+    ["success", "surface"], ["success", "success-soft"], ["warning", "warning-soft"],
+    ["danger", "surface"], ["danger", "danger-soft"], ["info", "info-soft"], ["ink", "gold-soft"],
+    ["on-primary", "success"], ["on-primary", "danger"],
+  ];
+}
+

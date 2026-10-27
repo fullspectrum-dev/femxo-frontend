@@ -48,6 +48,9 @@ export const ProductSummary = z.object({
   rating: z.number().min(0).max(5),
   ratingCount: z.number().int().nonnegative(),
   fromPrice: Paise,
+  /** The variant whose price is shown ("from"): what a card's quick-add puts in the cart. */
+  variantId: z.string(),
+  variantCount: z.number().int().positive(),
   fromPrimePrice: Paise,
   mrp: Paise,
   inStock: z.boolean(),
@@ -87,3 +90,7 @@ export const Availability = z.object({
   appliedPrice: Paise,
 });
 export type Availability = z.infer<typeof Availability>;
+
+/** A customer's saved products, newest first. */
+export const Wishlist = z.object({ items: z.array(ProductSummary).max(200) });
+export type Wishlist = z.infer<typeof Wishlist>;

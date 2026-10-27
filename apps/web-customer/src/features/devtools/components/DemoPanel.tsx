@@ -72,6 +72,9 @@ export function DemoPanel({ controls, mode }: { controls: DemoControls; mode: Ap
               <Button variant="secondary" size="sm" onClick={() => controls.forceNext("offline")}>
                 Go offline for the next request
               </Button>
+              <Button variant="secondary" size="sm" onClick={() => void controls.shortStockInCarts()}>
+                Make cart items run short
+              </Button>
             </div>
           </div>
 

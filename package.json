@@ -4,6 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "scripts": {
+    "dev": "pnpm --parallel --filter @femxo/web --filter @femxo/web-customer dev",
     "dev:web": "pnpm --filter @femxo/web dev",
     "dev:shop": "pnpm --filter @femxo/web-customer dev",
     "build:web": "pnpm --filter @femxo/web build",

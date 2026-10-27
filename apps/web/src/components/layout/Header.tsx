@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Container } from "@/components/shared/Container";
 import { Logo } from "@/components/shared/Logo";
-import { NAV_LINKS } from "@/lib/constants";
+import { CUSTOMER_SIGN_IN_URL, NAV_LINKS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
@@ -66,11 +66,18 @@ export function Header() {
 
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
+            {/* The storefront is its own site, so this is a plain link, not a client-side navigation. */}
+            <a
+              href={CUSTOMER_SIGN_IN_URL}
+              className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary/70 lg:inline-flex"
+            >
+              Customer sign in
+            </a>
             <Link
               href="/login"
-              className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary/70 lg:inline-flex"
+              className="hidden h-10 items-center rounded-xl px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground xl:inline-flex"
             >
-              Sign in
+              Staff sign in
             </Link>
             <Link href={sectionHref("#contact")} className="btn-gold hidden h-10 px-4 lg:inline-flex">
               {/* One flex item, so the button's gap doesn't split the words. */}
@@ -123,17 +130,20 @@ export function Header() {
               ))}
             </nav>
             <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border/60 pt-4">
+              <a href={CUSTOMER_SIGN_IN_URL} onClick={() => setIsMobileOpen(false)} className="btn-outline h-11">
+                Customer sign in
+              </a>
               <Link
                 href="/login"
                 onClick={() => setIsMobileOpen(false)}
                 className="btn-outline h-11"
               >
-                Sign in
+                Staff sign in
               </Link>
               <Link
                 href={sectionHref("#contact")}
                 onClick={() => setIsMobileOpen(false)}
-                className="btn-gold h-11"
+                className="btn-gold col-span-2 h-11"
               >
                 Partner with us
               </Link>

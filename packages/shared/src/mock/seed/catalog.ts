@@ -132,9 +132,10 @@ export function buildCatalog(): Catalog {
   }
 
   const banners = [
-    { id: "ban-1", title: "Chhath essentials", subtitle: "Everything for the festival, delivered in 2–4 days", image: "/banners/seasonal.webp", href: "/c/seasonal" },
-    { id: "ban-2", title: "Join Prime", subtitle: "Extra savings and free delivery on every order", image: "/banners/prime.webp", href: "/prime" },
-    { id: "ban-3", title: "Kitchen staples", subtitle: "Atta, rice, dal and oil at everyday low prices", image: "/banners/staples.webp", href: "/c/staples" },
+    { id: "ban-1", title: "Groceries for your family", subtitle: "Fresh food, daily essentials, better living", image: "/banners/groceries.webp", href: "/c/staples" },
+    { id: "ban-2", title: "Cold drinks & beverages", subtitle: "Stay refreshed, stay energized", image: "/banners/beverages.webp", href: "/c/beverages" },
+    { id: "ban-3", title: "Snacks & namkeen", subtitle: "Chips, kurkure, namkeen, biscuits and more", image: "/banners/snacks.webp", href: "/c/snacks" },
+    { id: "ban-4", title: "Electronics & gadgets", subtitle: "Top brands, best prices, next-gen tech", image: "/banners/electronics.webp", href: "/search?q=electronics" },
   ];
 
   return { categories, brands, products, banners, reviews };

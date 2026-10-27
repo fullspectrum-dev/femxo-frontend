@@ -4,12 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@femxo/ui";
 import type { NavCategory } from "../categories";
+import { t } from "@/i18n";
 
 /** Category strip under the header; scrolls sideways inside itself on small screens. */
 export function CategoryNav({ categories }: { categories: readonly NavCategory[] }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Shop by category" className="border-b border-line bg-surface">
+    <nav aria-label={t("shell.nav.categories")} className="border-b border-line bg-surface">
       <ul className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 [scrollbar-width:none]">
         {categories.map((category) => {
           const href = `/c/${category.slug}`;

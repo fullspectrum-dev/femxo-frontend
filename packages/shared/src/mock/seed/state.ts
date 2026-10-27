@@ -207,7 +207,7 @@ export function buildInitialState(catalog: Catalog, now: Date): MockState {
       total: breakup.total,
       itemCount: lines.reduce((sum, line) => sum + line.quantity, 0),
       thumbnail: lines[0]!.product.image,
-      lines: lines.map(({ seedVariant: _seed, ...line }) => line),
+      lines: lines.map(({ seedVariant: _seed, ...line }, index) => ({ ...line, returnable: picked[index]!.returnable })),
       breakup,
       address,
       paymentMethod: method,

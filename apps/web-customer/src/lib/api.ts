@@ -1,9 +1,9 @@
 "use client";
 
 import { apiMode } from "@femxo/shared";
-import { createAuthApi, createHttpAdapter, createProductsApi, createSearchApi, withAuth } from "@femxo/shared/api";
+import { createAddressApi, createAuthApi, createCartApi, createCheckoutApi, createPaymentApi, createHttpAdapter, createOrdersApi, createPrimeApi, createProductsApi, createSearchApi, createSupportApi, createWishlistApi, shareReads, withAuth } from "@femxo/shared/api";
 import type { ApiAdapter } from "@femxo/shared/api";
-import { getMockRuntime } from "@/features/devtools/runtime";
+import { loadMockRuntime } from "@/features/devtools/runtime";
 import { getAccessToken } from "./token";
 
 /*
@@ -16,8 +16,11 @@ let adapter: ApiAdapter | undefined;
 
 function authedAdapter() {
   if (!adapter) {
-    const base = apiMode === "mock" ? getMockRuntime()!.adapter : createHttpAdapter({ baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "" });
-    adapter = withAuth(base, getAccessToken);
+    // The mock backend is built the first time a request is sent (see runtime.ts), not when this client is made.
+    const mock: ApiAdapter = { send: async (req) => (await loadMockRuntime())!.adapter.send(req) };
+    const base = apiMode === "mock" ? mock : createHttpAdapter({ baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "" });
+    // Identical reads made together (two components, or React running an effect twice in development) go out once.
+    adapter = shareReads(withAuth(base, getAccessToken));
   }
   return adapter;
 }
@@ -25,3 +28,11 @@ function authedAdapter() {
 export const getAuthApi = () => createAuthApi(authedAdapter());
 export const getSearchApi = () => createSearchApi(authedAdapter());
 export const getProductsApi = () => createProductsApi(authedAdapter());
+export const getCartApi = () => createCartApi(authedAdapter());
+export const getWishlistApi = () => createWishlistApi(authedAdapter());
+export const getAddressApi = () => createAddressApi(authedAdapter());
+export const getCheckoutApi = () => createCheckoutApi(authedAdapter());
+export const getPaymentApi = () => createPaymentApi(authedAdapter());
+export const getOrdersApi = () => createOrdersApi(authedAdapter());
+export const getSupportApi = () => createSupportApi(authedAdapter());
+export const getPrimeApi = () => createPrimeApi(authedAdapter());

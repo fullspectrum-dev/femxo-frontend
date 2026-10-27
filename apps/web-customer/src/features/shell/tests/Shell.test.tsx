@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { CartContext } from "@/features/cart/components/CartProvider";
 import { BottomBar } from "../components/BottomBar";
 import { CategoryNav } from "../components/CategoryNav";
 import { Header } from "../components/Header";
@@ -11,12 +12,12 @@ vi.mock("next/navigation", () => ({ usePathname: () => pathname, useRouter: () =
 
 describe("Header", () => {
   it("links the logo home", () => {
-    render(<Header cartCount={0} />);
+    render(<Header />);
     expect(screen.getByRole("link", { name: "Femxo home" })).toHaveAttribute("href", "/");
   });
 
   it("has a search form that works without JavaScript (GET /search?q=)", () => {
-    render(<Header cartCount={0} />);
+    render(<Header />);
     const form = screen.getByRole("search");
     expect(form).toHaveAttribute("action", "/search");
     expect(form).toHaveAttribute("method", "get");
@@ -25,14 +26,25 @@ describe("Header", () => {
   });
 
   it("names the cart link with its item count", () => {
-    render(<Header cartCount={3} />);
+    const withCount = (itemCount: number) => (
+      <CartContext.Provider value={{ cart: { itemCount } } as never}>
+        <Header />
+      </CartContext.Provider>
+    );
+    const { unmount } = render(withCount(3));
     expect(screen.getByRole("link", { name: "Cart, 3 items" })).toHaveAttribute("href", "/cart");
-    render(<Header cartCount={1} />);
+    unmount();
+    render(withCount(1));
     expect(screen.getByRole("link", { name: "Cart, 1 item" })).toBeInTheDocument();
   });
 
+  it("shows an empty cart link before the cart has loaded", () => {
+    render(<Header />);
+    expect(screen.getByRole("link", { name: "Cart, 0 items" })).toBeInTheDocument();
+  });
+
   it("offers Prime and the account", () => {
-    render(<Header cartCount={0} />);
+    render(<Header />);
     expect(screen.getAllByRole("link", { name: /Prime/ })[0]).toHaveAttribute("href", "/prime");
     expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute("href", "/account");
   });

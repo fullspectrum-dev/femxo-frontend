@@ -12,6 +12,13 @@ export const SITE = {
   shortName: "Femxo",
 } as const;
 
+/**
+ * Where the customer storefront runs (its own site, its own port locally). Set NEXT_PUBLIC_STORE_URL at
+ * build time for any other address; no trailing slash.
+ */
+export const STORE_URL = (process.env.NEXT_PUBLIC_STORE_URL || "http://localhost:3002").replace(/\/$/, "");
+export const CUSTOMER_SIGN_IN_URL = `${STORE_URL}/login`;
+
 export const NAV_LINKS: readonly NavLink[] = [
   { label: "Why Femxo", href: "#why" },
   { label: "Network", href: "#network" },

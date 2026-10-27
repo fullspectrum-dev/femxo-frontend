@@ -6,7 +6,7 @@ import type { AuthApi, ProductsApi } from "@femxo/shared/api";
 import { createMockBackend } from "@femxo/shared/demo";
 import type { ProductDetail, ReviewList } from "@femxo/shared/contracts";
 import { axeViolations } from "@femxo/ui/testing/axe";
-import { SessionProvider } from "@/features/auth/components/SessionProvider";
+import { StorefrontProviders } from "@/test/providers";
 import { PincodeCheck } from "../components/PincodeCheck";
 import { ProductBuyBox } from "../components/ProductBuyBox";
 import { ProductReviews } from "../components/ProductReviews";
@@ -27,7 +27,7 @@ beforeEach(async () => {
 });
 
 const signedOut = { refresh: vi.fn(() => Promise.reject(new ApiError(401, "UNAUTHENTICATED", "x"))), logout: vi.fn() } as unknown as AuthApi;
-const withSession = (children: React.ReactNode) => <SessionProvider auth={signedOut}>{children}</SessionProvider>;
+const withSession = (children: React.ReactNode) => <StorefrontProviders auth={signedOut}>{children}</StorefrontProviders>;
 
 describe("ProductBuyBox", () => {
   it("shows the price, Prime offer, stock and a picked variant", async () => {

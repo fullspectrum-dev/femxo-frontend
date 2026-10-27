@@ -18,3 +18,5 @@ export { TextField } from "./components/TextField";
 export type { TextFieldProps } from "./components/TextField";
 export type { TabItem } from "./components/Tabs";
 export { ToastProvider, useToast } from "./components/Toast";
+export { ThemeToggle, toggleTheme, useIsDarkTheme } from "./components/ThemeToggle";
+export { THEME_STORAGE_KEY, themeInitScript } from "./theme-script";

@@ -74,11 +74,9 @@ export function createMockAdapter<S>({
   // One request at a time: writes read-modify-write the whole state.
   let queue: Promise<unknown> = Promise.resolve();
 
-  async function handle(req: ApiRequest): Promise<ApiResponse> {
+  async function handle(req: ApiRequest, outcome: ForcedOutcome | null): Promise<ApiResponse> {
     if (latency) await sleep(rng.int(latency.min, latency.max));
 
-    const outcome = forced;
-    forced = null;
     if (outcome === "offline") throw new ApiError(0, "INTERNAL", "Couldn't reach Femxo. Check your connection and try again.");
     if (outcome === "server-error") return respond(500, errorBody("INTERNAL", "Something went wrong on our side."));
 
@@ -139,7 +137,10 @@ export function createMockAdapter<S>({
 
   return {
     send(req: ApiRequest): Promise<ApiResponse> {
-      const run = queue.then(() => handle(req));
+      // "The next request" is the next one sent: taken here, not when its turn comes, so one sent earlier (and still waiting or in flight) can't use it up.
+      const outcome = forced;
+      forced = null;
+      const run = queue.then(() => handle(req, outcome));
       queue = run.catch(() => undefined);
       return run;
     },

@@ -27,6 +27,7 @@ export const ApiErrorCode = z.enum([
   "PRICE_CHANGED", // 409, details: { lines }
   "CART_EXPIRED", // 410
   "COUPON_INVALID", // 422, details: { reason }
+  "ORDER_STATE", // 409: the order is not in a state that allows this (cancel after packing, retry of a paid order)
   "NOT_SERVICEABLE", // 422
   "OTP_INVALID", // 422, details: { attemptsLeft }
   "OTP_EXPIRED", // 422

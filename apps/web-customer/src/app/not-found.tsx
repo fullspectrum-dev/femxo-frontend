@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { buttonClasses, EmptyState } from "@femxo/ui";
+import { t } from "@/i18n";
 
 export default function NotFound() {
   return (
     <EmptyState
-      title="We couldn't find that page"
-      message="It may have moved, or the link may be wrong."
+      title={t("notFound.title")}
+      message={t("notFound.message")}
       action={
         <Link href="/" className={buttonClasses()}>
-          Back to the store
+          {t("notFound.cta")}
         </Link>
       }
     />

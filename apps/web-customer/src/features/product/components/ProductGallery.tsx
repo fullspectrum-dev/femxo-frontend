@@ -18,7 +18,8 @@ export function ProductGallery({ images, soldOut = false }: { images: ProductDet
           src={current.src}
           alt={current.alt}
           fill
-          priority
+          loading="eager"
+          fetchPriority="high"
           sizes="(min-width: 1024px) 40vw, 100vw"
           className={cn("object-cover", soldOut && "opacity-60 grayscale")}
         />

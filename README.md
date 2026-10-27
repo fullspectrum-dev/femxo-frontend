@@ -27,11 +27,16 @@ admin panel at `/admin`.
 ```powershell
 pnpm install
 Copy-Item apps/web/.env.example apps/web/.env.local
-pnpm dev:web                      # website + admin on 3001
-pnpm dev:shop                     # storefront on 3002
+pnpm dev                          # both: website + admin on 3001, storefront on 3002
+pnpm dev:web                      # or just the website + admin
+pnpm dev:shop                     # or just the storefront
 ```
 
-Open `http://localhost:3001`. The site runs on **dummy data** (demo mode) by
+Open `http://localhost:3001`: the landing page is the front door. **Customer sign in** there
+goes to the storefront's sign-in page (`NEXT_PUBLIC_STORE_URL`, default
+`http://localhost:3002`); **Staff sign in** is the one for admins and partners. A new
+customer picks *Create an account*, gives a mobile number (demo code `123456`) and a name,
+then signs in with the account and lands in the store. The site runs on **dummy data** (demo mode) by
 default, locally and in production: sign-in runs in the browser with test
 accounts and no backend is called. To connect femxo-backend later, start it,
 set `NEXT_PUBLIC_AUTH_DEMO_MODE=false` and `FEMXO_API_ORIGIN`, and rebuild.

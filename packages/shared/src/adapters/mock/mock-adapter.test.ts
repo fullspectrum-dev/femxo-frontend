@@ -151,6 +151,25 @@ describe("MockAdapter chaos and forced outcomes", () => {
     adapter.controls.forceNext("offline");
     await expect(adapter.send({ method: "GET", path: "/items/p1" })).rejects.toMatchObject({ status: 0 });
   });
+
+  it("gives a forced failure to the next request sent, not to one already waiting out its delay", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let sleeping = 0;
+    const { adapter } = setup({
+      sleep: async () => {
+        // Only the first request is held back; later ones go straight through.
+        if (sleeping++ === 0) await gate;
+      },
+    });
+    const earlier = adapter.send({ method: "GET", path: "/items/p1" });
+    await new Promise((resolve) => setTimeout(resolve, 0)); // it is now in flight
+    adapter.controls.forceNext("server-error");
+    const next = adapter.send({ method: "GET", path: "/items/p1" });
+    release();
+    expect((await earlier).status).toBe(200);
+    expect((await next).status).toBe(500);
+  });
 });
 
 describe("cursor pagination", () => {

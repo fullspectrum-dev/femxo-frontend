@@ -58,3 +58,46 @@
   --shadow-card: 0 1px 2px rgb(18 7 31 / 0.05), 0 8px 24px -16px rgb(18 7 31 / 0.18);
   --shadow-raised: 0 24px 48px -16px rgb(18 7 31 / 0.35);
 }
+
+/*
+ * Dark palette: the same token names, so every component follows with no
+ * per-component dark: classes. Applied by the `dark` class on <html> (see
+ * ThemeToggle). Primary flips to a light lavender so purple text reads on dark
+ * surfaces, which means on-primary turns dark; bands that must stay dark with
+ * white text (Prime strip, membership card, image overlays) use text-white.
+ */
+.dark {
+  color-scheme: dark;
+
+  --color-primary: #b794ee;
+  --color-primary-hover: #c9aef3;
+  --color-primary-deep: #3a1d5e;
+  --color-primary-soft: #2b1b40;
+  --color-on-primary: #1a0b2b;
+  --color-gold: #ffc45e;
+  --color-gold-deep: #e0a53a;
+  --color-gold-soft: #3a2c12;
+  --color-on-gold: #3a2205;
+
+  --color-ink: #f4eefb;
+  --color-ink-muted: #b6aac6;
+  --color-canvas: #120a1c;
+  --color-surface: #1c1229;
+  --color-surface-sunken: #261a37;
+  --color-line: #36274b;
+  --color-line-input: #8d7fa3;
+  --color-focus: #b794ee;
+
+  --color-success: #4cc98f;
+  --color-success-soft: #123324;
+  --color-warning: #f0b44c;
+  --color-warning-soft: #3a2a0c;
+  --color-danger: #ff8a80;
+  --color-danger-soft: #3d1612;
+  --color-info: #8fb0ff;
+  --color-info-soft: #172447;
+
+  --shadow-key: 0 3px 0 0 #6c35a5;
+  --shadow-key-neutral: 0 3px 0 0 #0c0613;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -16px rgb(0 0 0 / 0.6);
+}

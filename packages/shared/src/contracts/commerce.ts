@@ -29,6 +29,10 @@ export const PriceBreakup = z.object({
 });
 export type PriceBreakup = z.infer<typeof PriceBreakup>;
 
+/** Why a coupon was refused (the `reason` in a COUPON_INVALID error's details). */
+export const CouponRefusal = z.enum(["not_found", "expired", "exhausted", "min_cart", "prime_only", "first_order_only"]);
+export type CouponRefusal = z.infer<typeof CouponRefusal>;
+
 export const Cart = z.object({
   id: z.string(),
   lines: z.array(CartLine),
@@ -141,10 +145,13 @@ export const OrderSummary = z.object({
   total: Paise,
   itemCount: z.number().int().positive(),
   thumbnail: z.string(),
+  /** A Prime membership bought like an order; absent for ordinary orders. */
+  kind: z.enum(["goods", "prime"]).optional(),
 });
 export type OrderSummary = z.infer<typeof OrderSummary>;
 
-export const OrderLine = CartLine.omit({ available: true });
+/** A line as ordered: what was bought, and whether it can be returned. */
+export const OrderLine = CartLine.omit({ available: true }).extend({ returnable: z.boolean() });
 export type OrderLine = z.infer<typeof OrderLine>;
 
 export const OrderDetail = OrderSummary.extend({

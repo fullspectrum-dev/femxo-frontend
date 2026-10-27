@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { ProductsApi } from "@femxo/shared/api";
 import type { Availability, ProductDetail } from "@femxo/shared/contracts";
-import { Badge, Price, Rating, cn } from "@femxo/ui";
+import { Badge, Price, QuantityStepper, Rating, cn } from "@femxo/ui";
+import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
+import { AddToCartButton } from "@/features/cart/components/AddToCartButton";
 import { useSession } from "@/features/auth/components/SessionProvider";
 import { getProductsApi } from "@/lib/api";
 import { PincodeCheck } from "./PincodeCheck";
@@ -32,6 +34,7 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
   const apiRef = useRef(products);
   const [selectedId, setSelectedId] = useState(() => (product.variants.find((variant) => variant.stock > 0) ?? product.variants[0]!).id);
   const [live, setLive] = useState<Record<string, Availability>>({});
+  const [wanted, setWanted] = useState(1);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -46,6 +49,8 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
   const stock = live[variant.id]?.stock ?? variant.stock;
   const message = stockMessage(stock);
   const member = user?.isPrime ?? false;
+  const limit = Math.max(Math.min(stock, variant.maxPerOrder), 1);
+  const quantity = Math.min(wanted, limit);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
@@ -54,7 +59,10 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
       <div className="grid content-start gap-4">
         <div className="grid gap-1.5">
           <p className="text-sm font-medium text-ink-muted">{product.brand.name}</p>
-          <h1 className="font-display text-2xl font-bold leading-tight md:text-3xl">{product.name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="font-display text-2xl font-bold leading-tight md:text-3xl">{product.name}</h1>
+            <WishlistButton product={product} className="flex-none border border-line" />
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Rating value={product.rating} count={product.ratingCount} />
             {product.primeExclusive ? <Badge tone="gold">Prime only</Badge> : null}
@@ -83,7 +91,10 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
                     out && "text-ink-muted"
                   )}
                 >
-                  <input type="radio" name="variant" value={entry.id} checked={entry.id === selectedId} onChange={() => setSelectedId(entry.id)} className="sr-only" />
+                  <input type="radio" name="variant" value={entry.id} checked={entry.id === selectedId} onChange={() => {
+                      setSelectedId(entry.id);
+                      setWanted(1);
+                    }} className="sr-only" />
                   {entry.label}
                   {out ? <span className="sr-only"> (out of stock)</span> : null}
                 </label>
@@ -98,6 +109,19 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
           </p>
           {variant.bestBefore ? <p className="text-sm text-ink-muted">Best before {formatBestBefore(variant.bestBefore)}</p> : null}
         </div>
+
+        {stock > 0 ? (
+          <div className="flex flex-wrap items-start gap-3">
+            <QuantityStepper value={quantity} max={limit} onChange={setWanted} itemName={`${product.name} ${variant.label}`} />
+            <AddToCartButton
+              size="lg"
+              variantId={variant.id}
+              quantity={quantity}
+              itemName={`${product.name}, ${variant.label}`}
+              className="flex-1 sm:flex-none sm:min-w-56"
+            />
+          </div>
+        ) : null}
 
         <PincodeCheck />
 

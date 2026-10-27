@@ -1,5 +1,5 @@
 import type { Banner, Brand, Category } from "../../contracts/catalog";
-import type { Address, OrderDetail, Serviceability } from "../../contracts/commerce";
+import type { Address, OrderDetail, PaymentIntent, Serviceability } from "../../contracts/commerce";
 import type { Coupon, Customer, Membership, Referral, Review, Ticket } from "../../contracts/people";
 
 /*
@@ -64,7 +64,42 @@ export interface StoredCoupon extends Coupon {
   firstOrderOnly: boolean;
 }
 
-export type StoredOrder = OrderDetail & { customerId: string };
+export type StoredOrder = OrderDetail & {
+  customerId: string;
+  /** Orders placed in this browser move on by themselves from when they were confirmed; seeded ones stay as they are. */
+  lifecycle?: { confirmedAt: number };
+  /** Set on a Prime membership purchase: the plan to start once it is paid. */
+  prime?: { planId: string };
+};
+
+export interface StoredCartLine {
+  id: string;
+  variantId: string;
+  quantity: number;
+}
+
+/** A cart as kept: variants and counts only; prices and stock are looked up fresh each time it is read. */
+export interface StoredCart {
+  id: string;
+  lines: StoredCartLine[];
+  couponCode: string | null;
+  /** When it last changed (clock ms); it expires 7 days later. */
+  updatedAt: number;
+}
+
+/** A checkout in progress: which address and delivery option the shopper has chosen so far. */
+export interface StoredCheckout {
+  id: string;
+  customerId: string;
+  addressId: string | null;
+  deliveryId: "standard" | null;
+}
+
+/** One payment attempt for an order. */
+export interface StoredIntent extends PaymentIntent {
+  /** A pending payment settles (as paid) once the demo clock reaches this. */
+  settlesAt?: number;
+}
 
 /** Everything a shopper can change; persisted in IndexedDB in the browser. */
 export interface MockState {
@@ -81,8 +116,16 @@ export interface MockState {
   tickets: Record<string, Ticket[]>;
   /** Stock after orders placed in this browser, by variant id (absent = seed stock). */
   stock: Record<string, number>;
-  /** Filled by later modules (carts). */
-  carts: Record<string, unknown>;
+  /** Carts by owner: a customer id, or the guest cart's id. */
+  carts: Record<string, StoredCart>;
+  /**
+   * The guest-cart cookie: which cart a signed-out browser is filling.
+   * Absent in state saved before carts existed.
+   */
+  guestCartId?: string | null;
+  /** Absent in state saved before checkout existed. */
+  checkouts?: Record<string, StoredCheckout>;
+  intents?: Record<string, StoredIntent>;
   otp: { challenges: Record<string, OtpChallengeRecord>; byMobile: Record<string, OtpMobileRecord> };
   sessions: Record<string, SessionRecord>;
   /**

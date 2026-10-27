@@ -16,7 +16,7 @@ beforeEach(() => {
 describe("storefront home", () => {
   it("has banners, 8 deals in stock, 8 categories and Prime picks", async () => {
     const home = await products.home();
-    expect(home.banners).toHaveLength(3);
+    expect(home.banners).toHaveLength(4);
     expect(home.deals).toHaveLength(8);
     for (const deal of home.deals) expect(deal.inStock).toBe(true);
     expect(home.featuredCategories).toHaveLength(8);

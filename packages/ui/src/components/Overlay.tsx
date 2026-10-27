@@ -76,7 +76,7 @@ function OverlayFrame({
       ref={ref}
       aria-labelledby={titleId}
       className={cn(
-        "border border-line bg-surface p-0 text-ink shadow-raised backdrop:bg-ink/50 open:flex open:flex-col",
+        "border border-line bg-surface p-0 text-ink shadow-raised backdrop:bg-black/50 open:flex open:flex-col",
         variant === "dialog"
           ? "m-auto max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100vw-2rem))] rounded-card"
           : // Bottom sheet on phones, a drawer from the right from tablet up.

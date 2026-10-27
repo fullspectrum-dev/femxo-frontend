@@ -59,6 +59,10 @@ export const Membership = z.object({
 });
 export type Membership = z.infer<typeof Membership>;
 
+/** Whether the customer is a member now, and their card (also kept after it lapses, for renewing). */
+export const MembershipStatus = z.object({ membership: Membership.nullable(), active: z.boolean() });
+export type MembershipStatus = z.infer<typeof MembershipStatus>;
+
 export const Coupon = z.object({
   code: z.string(),
   label: z.string(),

@@ -1,5 +1,5 @@
 import type { ProductDetail, ProductSummary, Variant } from "../../contracts/catalog";
-import type { Catalog, SeedProduct, SeedVariant } from "./types";
+import type { Catalog, MockState, SeedProduct, SeedVariant } from "./types";
 
 const IST_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" });
 
@@ -9,6 +9,12 @@ export const istDate = (now: Date) => IST_DATE.format(now);
 /** Current stock: the browser's override after orders, else the seed value. */
 export type StockLookup = (variant: SeedVariant) => number;
 const seedStock: StockLookup = (variant) => variant.stock;
+
+/** Stock as this browser sees it: the seed, less what its orders took. */
+export const stockFor =
+  (state: MockState): StockLookup =>
+  (variant) =>
+    state.stock[variant.id] ?? variant.stock;
 
 /** The nearest batch that hasn't expired yet; null when none is dated. */
 export function bestBefore(variant: SeedVariant, now: Date) {
@@ -46,6 +52,8 @@ export function toProductSummary(product: SeedProduct, catalog: Catalog, stock: 
     rating: product.rating,
     ratingCount: product.ratingCount,
     fromPrice: cheapest.price,
+    variantId: cheapest.id,
+    variantCount: product.variants.length,
     fromPrimePrice: cheapest.primePrice,
     mrp: cheapest.mrp,
     inStock: inStock.length > 0,
