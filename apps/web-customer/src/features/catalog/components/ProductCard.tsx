@@ -1,19 +1,17 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import type { ProductSummary } from "@femxo/shared/contracts";
-import { Badge, Card, Price, Rating } from "@femxo/ui";
-import { useSession } from "@/features/auth/components/SessionProvider";
+import { Badge, Card, Rating } from "@femxo/ui";
+import { AddToCartButton } from "@/features/cart/components/AddToCartButton";
+import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
+import { CardPrice } from "./CardPrice";
 
 /**
  * A product in a list or rail. The picture leads; the whole card is one link
- * to the product page. The price shown is the one this shopper pays: Prime
- * members see the Prime price, everyone else sees it as an offer.
+ * to the product page. Rendered on the server; only the price (who is shopping),
+ * the heart and quick-add are client islands, so a page of cards hydrates little.
  */
-export function ProductCard({ product, priority = false }: { product: ProductSummary; priority?: boolean }) {
-  const { user } = useSession();
-
+export function ProductCard({ product, priority = false, quickAdd = true }: { product: ProductSummary; priority?: boolean; quickAdd?: boolean }) {
   return (
     <Card as="article" padded={false} className="group relative flex h-full flex-col overflow-hidden transition-shadow hover:shadow-raised">
       <div className="relative aspect-square bg-surface-sunken">
@@ -23,9 +21,11 @@ export function ProductCard({ product, priority = false }: { product: ProductSum
           alt=""
           fill
           sizes="(min-width: 1280px) 20vw, (min-width: 768px) 25vw, 50vw"
-          priority={priority}
+          loading={priority ? "eager" : undefined}
+          fetchPriority={priority ? "high" : undefined}
           className={product.inStock ? "object-cover" : "object-cover opacity-50 grayscale"}
         />
+        <WishlistButton product={product} className="absolute right-2 top-2 z-10" />
         <div className="absolute left-2 top-2 flex flex-wrap gap-1">
           {!product.inStock ? <Badge tone="neutral">Out of stock</Badge> : null}
           {product.primeExclusive ? <Badge tone="gold">Prime only</Badge> : null}
@@ -45,7 +45,11 @@ export function ProductCard({ product, priority = false }: { product: ProductSum
           </Link>
         </h3>
         <Rating value={product.rating} count={product.ratingCount} />
-        <Price className="mt-auto pt-1" size="md" price={product.fromPrice} mrp={product.mrp} primePrice={product.fromPrimePrice} member={user?.isPrime ?? false} />
+        <CardPrice price={product.fromPrice} mrp={product.mrp} primePrice={product.fromPrimePrice} />
+        {/* One size to choose from: add it right here. Otherwise the card opens the page to choose. Above the card's stretched link. */}
+        {quickAdd && product.inStock && product.variantCount === 1 ? (
+          <AddToCartButton variantId={product.variantId} itemName={product.name} label="Add" variant="secondary" size="sm" block className="relative z-10 mt-2" />
+        ) : null}
       </div>
     </Card>
   );

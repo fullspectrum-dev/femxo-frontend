@@ -21,9 +21,9 @@ export function ProductRail({ title, products, seeAllHref }: { title: string; pr
       </div>
       {/* Scrolls inside itself, so the page never scrolls sideways. */}
       <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:thin] md:mx-0 md:px-0">
-        {products.map((product, index) => (
+        {products.map((product) => (
           <li key={product.id} className="w-44 flex-none snap-start md:w-56">
-            <ProductCard product={product} priority={index < 2} />
+            <ProductCard product={product} />
           </li>
         ))}
       </ul>

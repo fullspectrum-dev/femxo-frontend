@@ -15,7 +15,7 @@ export function CategoryTiles({ categories }: { categories: readonly Category[] 
               className="group relative block aspect-[3/2] overflow-hidden rounded-card border border-line focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
               <Image src={category.image} alt="" fill sizes="(min-width: 640px) 25vw, 50vw" className="object-cover transition-transform duration-300 group-hover:scale-105" />
-              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/80 to-transparent p-3 text-on-primary">
+              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-white">
                 <span className="block text-sm font-semibold">{category.name}</span>
                 <span className="block text-xs opacity-90">
                   {category.productCount} {category.productCount === 1 ? "product" : "products"}

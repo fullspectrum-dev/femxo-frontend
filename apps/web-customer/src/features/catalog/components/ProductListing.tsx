@@ -3,6 +3,7 @@
 import { SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useOptimistic, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { ApiError, SearchApi } from "@femxo/shared/api";
 import type { Facets, ProductSummary, SearchQueryInput, SearchResult, SearchSort } from "@femxo/shared/contracts";
 import { Button, EmptyState, ErrorState, Sheet, Skeleton } from "@femxo/ui";
@@ -46,9 +47,11 @@ const fromResult = (key: string, result: SearchResult): Loaded => ({
  * A product list with filters and sorting that live in the address bar (so
  * a filtered page can be shared and reloaded) and a "Load more" button.
  * The first page can arrive pre-rendered from the server; it's used as long
- * as the address carries no filters.
+ * as the address carries no filters. `firstPage` is that page's cards already
+ * rendered on the server: shown as they are until something changes the list,
+ * so the browser doesn't build the same cards a second time.
  */
-export function ProductListing({ categorySlug, initial, search }: { categorySlug?: string; initial?: SearchResult; search?: SearchApi }) {
+export function ProductListing({ categorySlug, initial, firstPage, search }: { categorySlug?: string; initial?: SearchResult; firstPage?: ReactNode; search?: SearchApi }) {
   const router = useRouter();
   const pathname = usePathname();
   // Choices show at once and the address catches up, so a click never waits on the navigation.
@@ -118,6 +121,8 @@ export function ProductListing({ categorySlug, initial, search }: { categorySlug
   }
 
   const isCurrent = loaded?.key === key;
+  // Still exactly the list that came from the server (not filtered, nothing added by "Load more").
+  const showFirstPage = Boolean(firstPage) && Boolean(initial) && loaded?.items === initial?.items;
   const failed = failedKey === key && !isCurrent;
   const loading = !isCurrent && !failed;
 
@@ -236,13 +241,17 @@ export function ProductListing({ categorySlug, initial, search }: { categorySlug
           />
         ) : (
           <>
-            <ul className={`grid grid-cols-2 gap-3 transition-opacity md:grid-cols-3 xl:grid-cols-4 ${loading ? "opacity-60" : ""}`}>
-              {loaded.items.map((product, index) => (
-                <li key={product.id}>
-                  <ProductCard product={product} priority={index < 4} />
-                </li>
-              ))}
-            </ul>
+            {showFirstPage ? (
+              <div className={`transition-opacity ${loading ? "opacity-60" : ""}`}>{firstPage}</div>
+            ) : (
+              <ul className={`grid grid-cols-2 gap-3 transition-opacity md:grid-cols-3 xl:grid-cols-4 ${loading ? "opacity-60" : ""}`}>
+                {loaded.items.map((product, index) => (
+                  <li key={product.id}>
+                    <ProductCard product={product} priority={index < 2} />
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="mt-6 grid justify-items-center gap-2">
               <p className="text-sm text-ink-muted">
                 Showing {loaded.items.length} of {loaded.total}

@@ -1,11 +1,12 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@femxo/shared/api";
 import type { AuthApi, SearchApi } from "@femxo/shared/api";
 import type { Facets, ProductSummary, SearchResult } from "@femxo/shared/contracts";
 import { axeViolations } from "@femxo/ui/testing/axe";
-import { SessionProvider } from "@/features/auth/components/SessionProvider";
+import { StorefrontProviders } from "@/test/providers";
 import { FilterPanel } from "../components/FilterPanel";
 import { ProductListing } from "../components/ProductListing";
 import { parseListingParams } from "../query-string";
@@ -28,6 +29,8 @@ const product = (n: number, overrides: Partial<ProductSummary> = {}): ProductSum
   rating: 4,
   ratingCount: 5,
   fromPrice: 10000 + n,
+  variantId: `var-${n}`,
+  variantCount: 1,
   fromPrimePrice: 9500 + n,
   mrp: 12000,
   inStock: true,
@@ -67,12 +70,12 @@ const results = (items: ProductSummary[], overrides: Partial<SearchResult> = {})
 });
 
 const signedOut = () => Promise.reject(new ApiError(401, "UNAUTHENTICATED", "x"));
-function setup(searchApi: { search: ReturnType<typeof vi.fn> }, initial?: SearchResult) {
+function setup(searchApi: { search: ReturnType<typeof vi.fn> }, initial?: SearchResult, firstPage?: ReactNode) {
   const auth = { refresh: vi.fn(signedOut), logout: vi.fn() } as unknown as AuthApi;
   return render(
-    <SessionProvider auth={auth}>
-      <ProductListing categorySlug="staples" initial={initial} search={searchApi as unknown as SearchApi} />
-    </SessionProvider>
+    <StorefrontProviders auth={auth}>
+      <ProductListing categorySlug="staples" initial={initial} firstPage={firstPage} search={searchApi as unknown as SearchApi} />
+    </StorefrontProviders>
   );
 }
 
@@ -243,5 +246,33 @@ describe("ProductListing", () => {
     expect(within(sheet).getByRole("checkbox", { name: "Femxo Select (12)" })).toBeInTheDocument();
     await userEvent.click(within(sheet).getByRole("button", { name: /Show 1 products?/ }));
     expect(screen.queryByRole("dialog", { name: "Filters" })).not.toBeInTheDocument();
+  });
+});
+
+describe("the first page rendered on the server", () => {
+  const serverGrid = <ul data-testid="server-grid"><li>Thing number 1 (from the server)</li></ul>;
+
+  it("is shown as it came, instead of building the cards again in the browser", () => {
+    search = "";
+    setup({ search: vi.fn() }, results([product(1)]), serverGrid);
+    expect(screen.getByTestId("server-grid")).toBeInTheDocument();
+    expect(screen.queryByText("Thing number 1")).not.toBeInTheDocument();
+  });
+
+  it("gives way to the browser's own list once more is loaded", async () => {
+    search = "";
+    const searchApi = { search: vi.fn(async () => results([product(2)], { total: 2 })) };
+    setup(searchApi, results([product(1)], { total: 2, nextCursor: "c1" }), serverGrid);
+    await userEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Thing number 2")).toBeInTheDocument();
+    expect(screen.getByText("Thing number 1")).toBeInTheDocument();
+    expect(screen.queryByTestId("server-grid")).not.toBeInTheDocument();
+  });
+
+  it("is not used when the address carries filters", async () => {
+    search = "rating=4";
+    setup({ search: vi.fn(async () => results([product(9)])) }, results([product(1)]), serverGrid);
+    expect(await screen.findByText("Thing number 9")).toBeInTheDocument();
+    expect(screen.queryByTestId("server-grid")).not.toBeInTheDocument();
   });
 });

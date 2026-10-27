@@ -4,7 +4,7 @@ import { ApiError } from "@femxo/shared/api";
 import type { AuthApi } from "@femxo/shared/api";
 import type { Banner, Category, Customer, ProductSummary } from "@femxo/shared/contracts";
 import { axeViolations } from "@femxo/ui/testing/axe";
-import { SessionProvider } from "@/features/auth/components/SessionProvider";
+import { StorefrontProviders } from "@/test/providers";
 import { BannerRow } from "../components/BannerRow";
 import { CategoryTiles } from "../components/CategoryTiles";
 import { ProductCard } from "../components/ProductCard";
@@ -22,6 +22,8 @@ const product = (overrides: Partial<ProductSummary> = {}): ProductSummary => ({
   rating: 4.3,
   ratingCount: 12,
   fromPrice: 18500,
+  variantId: "var-1",
+  variantCount: 1,
   fromPrimePrice: 17200,
   mrp: 19900,
   inStock: true,
@@ -38,7 +40,7 @@ function withSession(children: React.ReactNode, user?: Customer) {
     refresh: vi.fn(user ? async () => ({ accessToken: "t", expiresIn: 900, user, isNewUser: false }) : signedOut),
     logout: vi.fn(),
   } as unknown as AuthApi;
-  return <SessionProvider auth={auth}>{children}</SessionProvider>;
+  return <StorefrontProviders auth={auth}>{children}</StorefrontProviders>;
 }
 
 describe("ProductCard", () => {
@@ -88,8 +90,9 @@ describe("ProductRail", () => {
   });
 
   it("renders nothing when there is nothing to show", () => {
-    const { container } = render(withSession(<ProductRail title="Today's deals" products={[]} />));
-    expect(container).toBeEmptyDOMElement();
+    render(withSession(<ProductRail title="Today's deals" products={[]} />));
+    expect(screen.queryByRole("heading", { name: "Today's deals" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 });
 
@@ -116,8 +119,10 @@ describe("BannerRow", () => {
     const { container } = render(<BannerRow banners={banners} />);
     const first = screen.getByRole("link", { name: /Chhath essentials/ });
     expect(first).toHaveAttribute("href", "/c/seasonal");
-    expect(first).toHaveTextContent("Delivered in 2–4 days");
+    expect(first).toHaveAccessibleName(/Delivered in 2–4 days/);
     expect(screen.getAllByRole("link")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Next offer" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Show offer/ })).toHaveLength(2);
     expect(await axeViolations(container)).toEqual([]);
   });
 });
