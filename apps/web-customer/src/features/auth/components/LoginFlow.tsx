@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -10,6 +11,7 @@ import { MobileNumber } from "@femxo/shared/contracts";
 import type { OtpChallenge, Session } from "@femxo/shared/contracts";
 import { Button, Tabs, TextField } from "@femxo/ui";
 import { getAuthApi } from "@/lib/api";
+import { t } from "@/i18n";
 import { setAccessToken } from "@/lib/token";
 import { safeNextPath } from "../next-path";
 import { OtpInput } from "./OtpInput";
@@ -41,12 +43,18 @@ function describe(error: unknown) {
 
 /**
  * Sign in or sign up: mobile OTP (the default) or email and password.
- * A first-time number continues to a name step before the customer shops.
+ * A first-time number continues to a name step, which creates the account;
+ * the customer then signs in with it (back on the sign-in screen, number filled in).
  * After signing in the customer goes to `?next=` (a path on this site only).
  */
 export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "login" | "signup" }) {
   const router = useRouter();
-  const next = safeNextPath(useSearchParams().get("next"));
+  const params = useSearchParams();
+  const next = safeNextPath(params.get("next"));
+  // Sent here right after making an account: say so, and save them typing the number again.
+  const justCreated = params.get("created") === "1";
+  const createdMobile = justCreated && /^\d{10}$/.test(params.get("mobile") ?? "") ? params.get("mobile")! : "";
+  const nextSuffix = next === "/" ? "" : `?next=${encodeURIComponent(next)}`;
   const { status, signIn } = useSession();
   const apiRef = useRef(auth);
   const api = () => (apiRef.current ??= getAuthApi());
@@ -56,7 +64,9 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
   const [busy, setBusy] = useState<Busy>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const [mobile, setMobile] = useState("");
+  // What the customer typed wins; until they type, the number from the address (the page can stay mounted while the address changes).
+  const [typedMobile, setMobile] = useState<string | null>(null);
+  const mobile = typedMobile ?? createdMobile;
   const [mobileError, setMobileError] = useState<string | undefined>();
   const [challenge, setChallenge] = useState<OtpChallenge | null>(null);
   const [code, setCode] = useState("");
@@ -157,9 +167,18 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
     setFormError(null);
     setBusy("signup");
     try {
-      const session = await api().completeSignup({ name: trimmed, email: signupEmail.trim() || null });
+      await api().completeSignup({ name: trimmed, email: signupEmail.trim() || null });
+      // The account exists now. The customer signs in with it next, so this half-finished session ends here.
+      try {
+        await api().logout();
+      } catch {
+        // Nothing to end if it already lapsed.
+      }
+      setAccessToken(undefined);
       setPending(null);
-      signIn(session);
+      const created = new URLSearchParams({ created: "1", mobile });
+      if (next !== "/") created.set("next", next);
+      router.replace(`/login?${created.toString()}`);
     } catch (error) {
       setFormError(describe(error));
     } finally {
@@ -208,7 +227,7 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
         />
         {errorBanner}
         <Button type="submit" size="lg" block busy={busy === "signup"}>
-          Start shopping
+          Create account
         </Button>
       </form>
     ) : step === "code" ? (
@@ -296,6 +315,11 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
           {mode === "signup" ? "Shop staples and daily needs, with Prime prices when you join." : "Welcome back. Pick up where you left off."}
         </p>
       </header>
+      {justCreated ? (
+        <p role="status" className="rounded-control bg-success-soft px-3 py-2 text-sm font-medium text-success">
+          {t("auth.accountReady")}
+        </p>
+      ) : null}
       <Tabs
         label="How to sign in"
         value={tab}
@@ -308,6 +332,23 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
           { key: "email", label: "Email", content: emailPanel },
         ]}
       />
+      <p className="text-center text-sm text-ink-muted">
+        {mode === "signup" ? (
+          <>
+            {t("auth.haveAccount")}{" "}
+            <Link href={`/login${nextSuffix}`} className="font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus">
+              {t("auth.signInLink")}
+            </Link>
+          </>
+        ) : (
+          <>
+            {t("auth.newHere")}{" "}
+            <Link href={`/signup${nextSuffix}`} className="font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus">
+              {t("auth.createAccountLink")}
+            </Link>
+          </>
+        )}
+      </p>
     </div>
   );
 }

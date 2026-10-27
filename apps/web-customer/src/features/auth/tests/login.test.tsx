@@ -167,7 +167,7 @@ describe("LoginFlow: mobile OTP", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
   });
 
-  it("asks a first-time customer for their name before they shop", async () => {
+  it("asks a first-time customer for their name, then sends them to sign in with the account they made", async () => {
     search = "next=%2Fcart";
     const auth = fakeAuth({ verifyOtp: vi.fn(async () => session(true, customer({ name: "" }))) });
     renderFlow(auth);
@@ -177,14 +177,49 @@ describe("LoginFlow: mobile OTP", () => {
 
     expect(await screen.findByRole("heading", { name: "What should we call you?" })).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: "Start shopping" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/name/i);
     expect(auth.completeSignup).not.toHaveBeenCalled();
 
     await userEvent.type(screen.getByLabelText(/Your name/), "Asha Devi");
-    await userEvent.click(screen.getByRole("button", { name: "Start shopping" }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/cart"));
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    // The account exists now; the customer signs in with it rather than being signed in on the spot.
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?created=1&mobile=9111111111&next=%2Fcart"));
     expect(auth.completeSignup).toHaveBeenCalledWith({ name: "Asha Devi", email: null });
+    expect(auth.logout).toHaveBeenCalled();
+  });
+
+  it("goes back to the store home after sign-in when no page was asked for", async () => {
+    const auth = fakeAuth({ verifyOtp: vi.fn(async () => session(true, customer({ name: "" }))) });
+    renderFlow(auth, "signup");
+    await enterMobile("9111111111");
+    await enterCode("123456");
+    await userEvent.click(screen.getByRole("button", { name: "Verify and continue" }));
+    await userEvent.type(await screen.findByLabelText(/Your name/), "Asha Devi");
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login?created=1&mobile=9111111111"));
+  });
+
+  it("welcomes a customer who has just made an account, with their number filled in", async () => {
+    search = "created=1&mobile=9111111111&next=%2Fcart";
+    renderFlow(fakeAuth());
+    expect(await screen.findByRole("status")).toHaveTextContent("Your account is ready. Sign in to start shopping.");
+    expect(screen.getByLabelText("Mobile number")).toHaveValue("9111111111");
+  });
+
+  it("ignores a mobile number in the address that isn't one", async () => {
+    search = "created=1&mobile=abc";
+    renderFlow(fakeAuth());
+    expect(await screen.findByLabelText("Mobile number")).toHaveValue("");
+  });
+
+  it("offers a new customer the way to create an account, and an existing one the way back", async () => {
+    search = "next=%2Fcart";
+    const { unmount } = renderFlow(fakeAuth());
+    expect(await screen.findByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/signup?next=%2Fcart");
+    unmount();
+    renderFlow(fakeAuth(), "signup");
+    expect(await screen.findByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login?next=%2Fcart");
   });
 
   it("says how many tries are left after a wrong code", async () => {

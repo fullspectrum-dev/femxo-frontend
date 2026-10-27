@@ -8,7 +8,8 @@ const POOJA = "9000000003";
 const alert = (page: Page) => page.locator("main").getByRole("alert");
 
 async function otpSignIn(page: Page, mobile: string, code = "123456") {
-  await page.getByLabel("Mobile number").fill(mobile);
+  // By role, not label: after a client-side navigation the previous page can still be in the DOM, hidden.
+  await page.getByRole("textbox", { name: "Mobile number" }).fill(mobile);
   await page.getByRole("button", { name: "Get OTP" }).click();
   await expect(page.getByRole("heading", { name: "Enter the code" })).toBeVisible();
   await page.keyboard.type(code); // the first box has focus
@@ -38,19 +39,39 @@ test("staying signed in across a reload, and signing out for good", async ({ pag
   await expect(page).toHaveURL(/\/login\?next=%2Faccount$/);
 });
 
-test("a new number gives a name first, then shops", async ({ page }) => {
-  await page.goto("/signup");
+test("a new customer creates an account, signs in with it, and then shops", async ({ page }) => {
+  // From sign in, the way to a new account is one click away.
+  await page.goto("/login");
+  await page.getByRole("link", { name: "Create an account" }).click();
+  await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByRole("heading", { level: 1, name: "Create your Femxo account" })).toBeVisible();
+
   await otpSignIn(page, "9111111111");
   await expect(page.getByRole("heading", { name: "What should we call you?" })).toBeVisible();
   await page.getByLabel(/Your name/).fill("Asha Devi");
-  await page.getByRole("button", { name: "Start shopping" }).click();
-  // No page was asked for, so a new customer lands in the store.
+  await page.getByRole("button", { name: "Create account" }).click();
+
+  // The account is made; now the sign-in page, with the number already filled in.
+  await expect(page).toHaveURL(/\/login\?created=1&mobile=9111111111$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Sign in to Femxo" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Your account is ready" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Mobile number" })).toHaveValue("9111111111");
+  await page.getByRole("button", { name: "Get OTP" }).click();
+  await expect(page.getByRole("heading", { name: "Enter the code" })).toBeVisible();
+  await page.keyboard.type("123456");
+  await page.getByRole("button", { name: "Verify and continue" }).click();
+
+  // No page was asked for, so the customer lands in the store, signed in with the name they gave.
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("heading", { level: 1, name: "Femxo store" })).toBeVisible();
-  // And they are signed in, with the name they gave.
   await page.goto("/account");
   await expect(page.getByRole("heading", { name: "Hello, Asha Devi" })).toBeVisible();
+});
+
+test("a customer who already has an account can go from sign up to sign in", async ({ page }) => {
+  await page.goto("/signup");
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/login$/);
 });
 
 test("signing in without a destination lands in the store, not the account page", async ({ page }) => {

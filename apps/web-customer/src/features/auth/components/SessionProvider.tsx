@@ -6,6 +6,7 @@ import { isApiError } from "@femxo/shared/api";
 import type { AuthApi } from "@femxo/shared/api";
 import type { Customer, Session } from "@femxo/shared/contracts";
 import { getAuthApi } from "@/lib/api";
+import { whenIdle } from "@/lib/idle";
 import { setAccessToken } from "@/lib/token";
 import { createRefreshGate } from "../refresh-gate";
 
@@ -84,10 +85,8 @@ export function SessionProvider({ auth, children }: { auth?: AuthApi; children: 
     }
   }, [applySession, refresh]);
 
-  // On load: is the refresh cookie still good?
-  useEffect(() => {
-    void check();
-  }, [check]);
+  // On load: is the refresh cookie still good? Asked once the page has painted, so it never delays what the visitor came to see.
+  useEffect(() => whenIdle(() => void check()), [check]);
 
   // Quietly renew before the access token runs out.
   useEffect(() => {
