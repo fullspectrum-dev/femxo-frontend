@@ -156,8 +156,26 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
     }
   }
 
+  /** Back to the first step with nothing left over from a sign-up that is finished (or whose session is gone). */
+  function backToMobileStep() {
+    setAccessToken(undefined);
+    setPending(null);
+    setStep("mobile");
+    setChallenge(null);
+    setCode("");
+    setName("");
+    setSignupEmail("");
+    setNameError(undefined);
+    setSignupEmailError(undefined);
+  }
+
   async function finishSignup(event: FormEvent) {
     event.preventDefault();
+    // The name step only makes sense while the half-finished session exists; without it the call can only fail.
+    if (!pending) {
+      backToMobileStep();
+      return;
+    }
     const trimmed = name.trim();
     const nameProblem = trimmed.length < 2 ? "Please enter your name." : undefined;
     const emailProblem = signupEmail.trim() && !EMAIL.test(signupEmail.trim()) ? "Enter a valid email address." : undefined;
@@ -174,13 +192,17 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
       } catch {
         // Nothing to end if it already lapsed.
       }
-      setAccessToken(undefined);
-      setPending(null);
+      // The form can stay mounted while the address changes, so leave the name step now rather than wait for a new page.
+      backToMobileStep();
       const created = new URLSearchParams({ created: "1", mobile });
       if (next !== "/") created.set("next", next);
       router.replace(`/login?${created.toString()}`);
     } catch (error) {
-      setFormError(describe(error));
+      if (isApiError(error, "UNAUTHENTICATED")) {
+        // The code's session ended before the name was saved: verify again instead of retrying a call that can't work.
+        backToMobileStep();
+        setFormError("Your session ended. Please get a new code to continue.");
+      } else setFormError(describe(error));
     } finally {
       setBusy(null);
     }
