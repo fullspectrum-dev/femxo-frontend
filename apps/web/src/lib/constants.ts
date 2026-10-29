@@ -29,7 +29,7 @@ export const CUSTOMER_SIGN_IN_URL = STORE_URL ? `${STORE_URL}/login` : null;
 
 export const NAV_LINKS: readonly NavLink[] = [
   { label: "Why Femxo", href: "#why" },
-  { label: "Network", href: "#network" },
+  { label: "Network", href: "#entrepreneurs" },
   { label: "Platform", href: "#platform" },
   { label: "Femxo Tech", href: "#tech", highlight: true },
   { label: "Women", href: "#women" },

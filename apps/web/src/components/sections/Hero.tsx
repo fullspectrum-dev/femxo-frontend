@@ -64,7 +64,7 @@ export function Hero() {
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="#network" className="btn-gold">
+              <Link href="#entrepreneurs" className="btn-gold">
                 Explore the network
                 <ArrowRight size={18} aria-hidden="true" />
               </Link>
