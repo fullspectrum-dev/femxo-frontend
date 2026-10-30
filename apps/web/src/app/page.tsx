@@ -5,6 +5,7 @@ import { WhyFemxo } from "@/components/sections/WhyFemxo";
 import { Entrepreneurs } from "@/components/sections/Entrepreneurs";
 import { Platform } from "@/components/sections/Platform";
 import { FemxoTech } from "@/components/sections/FemxoTech";
+import { TechVideos } from "@/components/sections/TechVideos";
 import { Women } from "@/components/sections/Women";
 import { Roadmap } from "@/components/sections/Roadmap";
 import { Contact } from "@/components/sections/Contact";
@@ -19,6 +20,7 @@ export default function HomePage() {
         <Entrepreneurs />
         <Platform />
         <FemxoTech />
+        <TechVideos />
         <Women />
         <Roadmap />
         <Contact />
