@@ -3,6 +3,7 @@ export type { BadgeTone, StatusKey } from "./Badge";
 export { Button } from "./Button";
 export type { ButtonProps, ButtonSize, ButtonVariant } from "./Button";
 export { Card, CardHeader } from "./Card";
+export { ComingSoon } from "./ComingSoon";
 export { ConfirmActionDialog } from "./ConfirmActionDialog";
 export type { ConfirmKind } from "./ConfirmActionDialog";
 export { DataTable } from "./DataTable";
