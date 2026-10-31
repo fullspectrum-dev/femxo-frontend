@@ -6,7 +6,7 @@ import path from "node:path";
 const backendConnected = process.env.NEXT_PUBLIC_AUTH_DEMO_MODE === "false";
 
 // Where femxo-backend runs. The browser calls /auth, /access and /territories
-// on this site and Next forwards them, so the API's refresh cookie
+// on this site and Next forwards them (plus users, inventory, catalog, cms and sales-territories), so the API's refresh cookie
 // (Path=/auth, SameSite=Strict) works without CORS. Set
 // NEXT_PUBLIC_API_BASE_URL instead to call the API origin directly.
 // Read at build time: rewrites are baked into the build output.
@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     // Nothing to forward to while the site runs on dummy data.
     if (!backendConnected) return [];
-    return ["auth", "access", "territories"].map((prefix) => ({
+    return ["auth", "access", "territories", "sales-territories", "users", "inventory", "catalog", "cms"].map((prefix) => ({
       source: `/${prefix}/:path*`,
       destination: `${apiOrigin}/${prefix}/:path*`,
     }));
