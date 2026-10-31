@@ -1,0 +1,182 @@
+{
+  "generatedAt": "2026-10-31T09:37:01.476Z",
+  "coverage": {
+    "specified": 18,
+    "mapped": 18,
+    "percent": 100,
+    "missing": [],
+    "orphan": [],
+    "wrongFile": []
+  },
+  "passRate": {
+    "run": 18,
+    "passed": 18,
+    "failed": 0,
+    "percent": 100
+  },
+  "gate": "PASS",
+  "scenarios": [
+    {
+      "id": "SPEC-AUTH-01",
+      "spec": "specs/integration/SPEC-AUTH.md",
+      "title": "Successful login",
+      "test": "e2e/integration/SPEC-AUTH.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-AUTH-01.png"
+    },
+    {
+      "id": "SPEC-AUTH-02",
+      "spec": "specs/integration/SPEC-AUTH.md",
+      "title": "Wrong password is rejected",
+      "test": "e2e/integration/SPEC-AUTH.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-AUTH-02.png"
+    },
+    {
+      "id": "SPEC-AUTH-03",
+      "spec": "specs/integration/SPEC-AUTH.md",
+      "title": "Expired or invalid access token",
+      "test": "e2e/integration/SPEC-AUTH.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-AUTH-03.png"
+    },
+    {
+      "id": "SPEC-AUTH-04",
+      "spec": "specs/integration/SPEC-AUTH.md",
+      "title": "Logout",
+      "test": "e2e/integration/SPEC-AUTH.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-AUTH-04.png"
+    },
+    {
+      "id": "SPEC-AUTH-05",
+      "spec": "specs/integration/SPEC-AUTH.md",
+      "title": "Token refresh and rotation",
+      "test": "e2e/integration/SPEC-AUTH.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-AUTH-05.png"
+    },
+    {
+      "id": "SPEC-AUTH-06",
+      "spec": "specs/integration/SPEC-AUTH.md",
+      "title": "Login rate limit (429)",
+      "test": "e2e/integration/SPEC-AUTH.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": null
+    },
+    {
+      "id": "SPEC-ERRORS-01",
+      "spec": "specs/integration/SPEC-ERRORS.md",
+      "title": "404",
+      "test": "e2e/integration/SPEC-ERRORS.spec.ts",
+      "status": "passed",
+      "retries": 1,
+      "screenshot": "e2e/results/screenshots/SPEC-ERRORS-01.png"
+    },
+    {
+      "id": "SPEC-ERRORS-02",
+      "spec": "specs/integration/SPEC-ERRORS.md",
+      "title": "Documented 400 error codes",
+      "test": "e2e/integration/SPEC-ERRORS.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": null
+    },
+    {
+      "id": "SPEC-ERRORS-03",
+      "spec": "specs/integration/SPEC-ERRORS.md",
+      "title": "429 with Retry-After",
+      "test": "e2e/integration/SPEC-ERRORS.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": null
+    },
+    {
+      "id": "SPEC-ERRORS-04",
+      "spec": "specs/integration/SPEC-ERRORS.md",
+      "title": "Retry-After countdown in the UI",
+      "test": "e2e/integration/SPEC-ERRORS.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-ERRORS-04.png"
+    },
+    {
+      "id": "SPEC-RBAC-01",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "Warehouse manager",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-RBAC-01.png"
+    },
+    {
+      "id": "SPEC-RBAC-02",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "Catalog manager",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-RBAC-02.png"
+    },
+    {
+      "id": "SPEC-RBAC-03",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "Content editor",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-RBAC-03.png"
+    },
+    {
+      "id": "SPEC-RBAC-04",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "Viewer",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-RBAC-04.png"
+    },
+    {
+      "id": "SPEC-RBAC-05",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "User without roles",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-RBAC-05.png"
+    },
+    {
+      "id": "SPEC-RBAC-06",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "Unauthenticated access",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-RBAC-06.png"
+    },
+    {
+      "id": "SPEC-RBAC-07",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "Forbidden writes return 403",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": null
+    },
+    {
+      "id": "SPEC-RBAC-08",
+      "spec": "specs/integration/SPEC-RBAC.md",
+      "title": "UI handling of a 403 inside the admin panel",
+      "test": "e2e/integration/SPEC-RBAC.spec.ts",
+      "status": "passed",
+      "retries": 0,
+      "screenshot": "e2e/results/screenshots/SPEC-RBAC-08.png"
+    }
+  ]
+}

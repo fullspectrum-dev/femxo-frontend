@@ -1,0 +1,27 @@
+transfer 6ae5b6ea61967acc4108dc30  HTTP 201   cleaned
+movement 6ae5b6e961967acc4108dc2c  HTTP 201   cleaned
+product  6ae5b6e861967acc4108dc26  HTTP 200   cleaned
+{
+  "cleaned": 3,
+  "tracked": 3,
+  "leftovers": {
+    "products": 0,
+    "draftTransfers": 0,
+    "unreversedMovements": 0,
+    "namedProductsNotArchived": 0
+  },
+  "ledgerMismatches": 0,
+  "seed": {
+    "users": 8,
+    "roles": 4,
+    "products": 10,
+    "warehouses": 3,
+    "seedProductsActive": 9,
+    "seedStockTotal": 7120,
+    "seedStockRows": 24,
+    "countsOk": true,
+    "unchangedSinceBaseline": true
+  },
+  "pass": true
+}
+CLEANUP: PASS

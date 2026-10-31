@@ -1,0 +1,86 @@
+npm notice run @femxo/web@1.0.0 npx
+npm notice run playwright test -c playwright.integration.config.ts
+
+Running 18 tests using 1 worker
+
+logged in, token eyJhbGciOiJIUzI1NiJ9…
+  ✓   1 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-AUTH-01: successful login (6.3s)
+  ✓   2 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-AUTH-02: wrong password is rejected (3.2s)
+  ✓   3 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-AUTH-03: expired or invalid access token (8.4s)
+  ✓   4 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-AUTH-04: logout ends the session (4.4s)
+refreshed, token eyJhbGciOiJIUzI1NiJ9…
+  ✓   5 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-AUTH-05: token refresh rotates the refresh cookie (4.8s)
+  ✓   6 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-AUTH-06: login rate limit returns 429 (354ms)
+  ✘   7 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-ERRORS-01: 404 for unknown routes, ids and pages (331ms)
+  ✓   8 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-ERRORS-01: 404 for unknown routes, ids and pages (retry #1) (2.1s)
+login bad body: 400 VALIDATION_ERROR
+limit too high: 400 VALIDATION_ERROR
+bad cursor: 400 INVALID_CURSOR
+unknown warehouse: 400 UNKNOWN_WAREHOUSE
+missing Idempotency-Key: 400 IDEMPOTENCY_KEY_REQUIRED
+  ✓   9 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-ERRORS-02: documented 400 error codes (226ms)
+  ✓  10 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-ERRORS-03: 429 carries Retry-After (2.4s)
+  ✓  11 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-ERRORS-04: Retry-After countdown in the UI (4.4s)
+login budget full (28/28); waiting 688s
+  ✓  12 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-01: warehouse manager (11.5m)
+login budget full (28/28); waiting 17s
+  ✓  13 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-02: catalog manager (18.4s)
+login budget full (28/28); waiting 24s
+  ✓  14 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-03: content editor (24.5s)
+  ✓  15 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-04: viewer (1.4s)
+login budget full (28/28); waiting 4s
+  ✓  16 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-05: user without roles (4.8s)
+  ✓  17 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-06: unauthenticated access (939ms)
+  ✓  18 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-07: forbidden writes return 403 (162ms)
+login budget full (28/28); waiting 2s
+  ✓  19 [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-RBAC-08: UI handles a 403 inside the panel (4.3s)
+
+
+  1) [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-ERRORS-01: 404 for unknown routes, ids and pages 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 401
+
+       at SPEC-ERRORS.spec.ts:27
+
+      25 |   const token = await adminToken(request);
+      26 |   const missing = await request.get(`${BASE_URL}/catalog/admin/products/000000000000000000000001`, { headers: bearer(token) });
+    > 27 |   expect(missing.status()).toBe(404);
+         |                            ^
+      28 |   const body = await missing.text();
+      29 |   expect(JSON.parse(body).error.code).toBeTruthy();
+      30 |   expect(body).not.toMatch(NO_INTERNALS);
+        at C:\Users\LENOVO\Documents\femxo\femxo-frontend\apps\web\e2e\integration\SPEC-ERRORS.spec.ts:27:28
+        at C:\Users\LENOVO\Documents\femxo\femxo-frontend\apps\web\e2e\integration\helpers.ts:140:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    e2e\results\artifacts\SPEC-ERRORS-SPEC-ERRORS-01-d5b87-nknown-routes-ids-and-pages-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: e2e\results\artifacts\SPEC-ERRORS-SPEC-ERRORS-01-d5b87-nknown-routes-ids-and-pages-chromium\error-context.md
+
+  1 flaky
+    [chromium] › e2e\integration\helpers.ts:138:3 › SPEC-ERRORS-01: 404 for unknown routes, ids and pages 
+  17 passed (13.1m)
+coverage gate: PASS  (18/18 scenarios mapped; missing 0, orphan 0, wrong file 0)
+pass rate:     18/18 run passed (100%)
+  passed    SPEC-AUTH-01  Successful login
+  passed    SPEC-AUTH-02  Wrong password is rejected
+  passed    SPEC-AUTH-03  Expired or invalid access token
+  passed    SPEC-AUTH-04  Logout
+  passed    SPEC-AUTH-05  Token refresh and rotation
+  passed    SPEC-AUTH-06  Login rate limit (429)
+  passed    SPEC-ERRORS-01  404
+  passed    SPEC-ERRORS-02  Documented 400 error codes
+  passed    SPEC-ERRORS-03  429 with Retry-After
+  passed    SPEC-ERRORS-04  Retry-After countdown in the UI
+  passed    SPEC-RBAC-01  Warehouse manager
+  passed    SPEC-RBAC-02  Catalog manager
+  passed    SPEC-RBAC-03  Content editor
+  passed    SPEC-RBAC-04  Viewer
+  passed    SPEC-RBAC-05  User without roles
+  passed    SPEC-RBAC-06  Unauthenticated access
+  passed    SPEC-RBAC-07  Forbidden writes return 403
+  passed    SPEC-RBAC-08  UI handling of a 403 inside the admin panel

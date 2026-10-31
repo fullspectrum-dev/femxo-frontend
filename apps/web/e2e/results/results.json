@@ -1,0 +1,801 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\LENOVO\\Documents\\femxo\\femxo-frontend\\apps\\web\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "-c",
+      "playwright.integration.config.ts",
+      "DIRECT-P1-P2",
+      "--retries=0"
+    ],
+    "configFile": "C:\\Users\\LENOVO\\Documents\\femxo\\femxo-frontend\\apps\\web\\playwright.integration.config.ts",
+    "rootDir": "C:/Users/LENOVO/Documents/femxo/femxo-frontend/apps/web/e2e/integration",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/LENOVO/Documents/femxo/femxo-frontend/apps/web/e2e/results/artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/LENOVO/Documents/femxo/femxo-frontend/apps/web/e2e/integration",
+        "testIgnore": [],
+        "testMatch": [
+          "*.spec.ts"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Users\\LENOVO\\Documents\\femxo\\femxo-frontend\\apps\\web\\e2e\\results\\artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "chromium",
+        "testDir": "C:\\Users\\LENOVO\\Documents\\femxo\\femxo-frontend\\apps\\web\\e2e\\integration",
+        "snapshotDir": "C:\\Users\\LENOVO\\Documents\\femxo\\femxo-frontend\\apps\\web\\e2e\\integration",
+        "testIgnore": [],
+        "testMatch": "*.spec.ts",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://localhost:3001",
+          "trace": "on-first-retry",
+          "screenshot": "only-on-failure",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "chromium"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "e2e/results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "DIRECT-P1-P2.spec.ts",
+      "file": "DIRECT-P1-P2.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "P1 direct test: catalog: admin product list returns a page with a cursor",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "direct",
+                  "description": "P1"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 244,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:16.438Z",
+                  "annotations": [
+                    {
+                      "type": "direct",
+                      "description": "P1"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-e7302a67e598cb31c311",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: catalog: admin panel products page shows live rows",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "direct",
+                  "description": "P1"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2009,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:16.818Z",
+                  "annotations": [
+                    {
+                      "type": "direct",
+                      "description": "P1"
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "name": "P1-catalog-products-page.png",
+                      "contentType": "image/png",
+                      "path": "C:\\Users\\LENOVO\\Documents\\femxo\\femxo-frontend\\apps\\web\\e2e\\results\\artifacts\\DIRECT-P1-P2-P1-direct-tes-5ac92-oducts-page-shows-live-rows-chromium\\attachments\\P1-catalog-products-page-png-1d9ed5943e5c63b16f5bb64d2e7b274fa99d2856.png"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-c82c798b297b8a595686",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: catalog: cursor pagination walks pages without repeats",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 129431,
+              "annotations": [
+                {
+                  "type": "direct",
+                  "description": "P1"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 39651,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "login budget full (28/28); waiting 40s\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:18.839Z",
+                  "annotations": [
+                    {
+                      "type": "direct",
+                      "description": "P1"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-de62994c9d9159357b80",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: catalog: create a product",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 46,
+                  "error": {
+                    "message": "Error: browserContext.newPage: Target crashed ",
+                    "stack": "Error: browserContext.newPage: Target crashed "
+                  },
+                  "errors": [
+                    {
+                      "message": "Error: browserContext.newPage: Target crashed "
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.501Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\LENOVO\\Documents\\femxo\\femxo-frontend\\apps\\web\\e2e\\results\\artifacts\\DIRECT-P1-P2-P1-direct-test-catalog-create-a-product-chromium\\error-context.md"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-22e820ed9b1a2a78f241",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: catalog: creating the same product again is 409",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "failed",
+                  "duration": 0,
+                  "error": {
+                    "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                  },
+                  "errors": [
+                    {
+                      "message": "Error: worker process exited unexpectedly (code=3221225794, signal=null)"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.660Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-54ef9cf7749163bfac27",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: catalog: edit a product",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-e15cba87e2b7008716ed",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: catalog: slug cannot be changed",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-439f202d8a1ea9ed6489",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: inventory: stock-in adds stock, replay is idempotent, key reuse is 422",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-3fab8bf1799cae99b2ce",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: inventory: a draft transfer reserves nothing",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-5242bd82a859884ccf33",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: inventory: warehouse scope returns 403 outside the user's warehouses",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-f9710c4c0a69aec349f7",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P2 direct test: barcode: EAN-13 with a valid check digit, unique per variant",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-4c1da1f4aee5735690b0",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P2 direct test: timestamps: ISO UTC, updatedAt follows the edit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-dee8fc10f846cf01fe67",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P2 direct test: pricing: a buyer sees one price for their tier, never the purchase price",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-88a9d2b85a3da77109a7",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P2 direct test: sensitive fields: no hashes, ids or secrets in list responses",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-7fd69853e62c43145997",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P2 direct test: 429 retry countdown re-enables the form when it reaches zero",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-9b210be0ac9b5138d2a2",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: catalog: archive hides a product from buyers",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-3afab74818b34b7ac91e",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: search: API answers 503 SEARCH_UNAVAILABLE when search is not configured",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-928ed12b75505421eeea",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        },
+        {
+          "title": "P1 direct test: search: the storefront search page degrades gracefully on 503",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T09:38:58.661Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "123e734d3bf38e34011d-5a9d2e4bd35c344e6c4f",
+          "file": "helpers.ts",
+          "line": 148,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-31T09:38:15.667Z",
+    "duration": 42995.328,
+    "expected": 3,
+    "skipped": 13,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}
