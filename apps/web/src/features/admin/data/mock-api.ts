@@ -48,7 +48,8 @@ export interface ListQuery {
 export interface Page {
   items: RecordRow[];
   nextCursor: string | null;
-  total: number;
+  /** Null when the API pages by cursor and doesn't count. */
+  total: number | null;
 }
 
 // Opaque to callers, like the API's base64url cursors.

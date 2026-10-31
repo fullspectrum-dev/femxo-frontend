@@ -49,8 +49,6 @@ export interface NavItem {
    * lacks (Foundations "Hidden nav items"); the API still enforces access.
    */
   permission: string;
-  /** Items waiting for action, shown as the gold count. */
-  badge?: number;
 }
 
 export interface NavGroup {
@@ -58,16 +56,15 @@ export interface NavGroup {
   items: readonly NavItem[];
 }
 
-const item = (key: ModuleKey, label: string, icon: LucideIcon, permission: string, badge?: number): NavItem => ({
+const item = (key: ModuleKey, label: string, icon: LucideIcon, permission: string): NavItem => ({
   key,
   label,
   href: `/admin/${key}`,
   icon,
   permission,
-  badge,
 });
 
-// Sidebar groups and counts as on the dashboard canvas.
+// Sidebar groups. The gold "waiting" counts are not set here: they come from the API (see shell/useNavBadges.ts).
 export const NAV_GROUPS: readonly NavGroup[] = [
   { label: "Overview", items: [item("dashboard", "Dashboard", LayoutGrid, "dashboard.view")] },
   {
@@ -83,9 +80,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "Commerce & Network",
     items: [
       item("products", "Products & Catalog", Package, "product.view"),
-      item("dealers", "Dealers", Store, "dealer.view", 7),
-      item("sub-dealers", "Sub-Dealers", MapPin, "subdealer.view", 12),
-      item("warehouse", "Warehouse & Inventory", Warehouse, "inventory.view", 5),
+      item("dealers", "Dealers", Store, "dealer.view"),
+      item("sub-dealers", "Sub-Dealers", MapPin, "subdealer.view"),
+      item("warehouse", "Warehouse & Inventory", Warehouse, "inventory.view"),
       item("prime", "Prime Membership", Star, "prime.view"),
       item("customers", "Customers", UserRound, "customer.view"),
     ],
@@ -94,7 +91,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "Operations & Finance",
     items: [
       item("orders", "Orders & Delivery", Truck, "order.view"),
-      item("billing", "Billing & Invoices", ReceiptText, "invoice.view", 4),
+      item("billing", "Billing & Invoices", ReceiptText, "invoice.view"),
       item("finance", "Finance & Wallet", CreditCard, "wallet.view"),
     ],
   },
@@ -102,8 +99,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "Insights & Integrations",
     items: [
       item("reports", "Reports & Analytics", ChartColumn, "report.view"),
-      item("notifications", "Notifications", Bell, "notification.view", 3),
-      item("integrations", "API & Integrations", Plug, "integration.view", 2),
+      item("notifications", "Notifications", Bell, "notification.view"),
+      item("integrations", "API & Integrations", Plug, "integration.view"),
     ],
   },
 ];

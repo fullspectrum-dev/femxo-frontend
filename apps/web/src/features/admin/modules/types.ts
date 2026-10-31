@@ -26,7 +26,7 @@ export interface DetailSpec {
 export interface FormFieldSpec {
   name: string;
   label: string;
-  kind: "text" | "email" | "tel" | "number" | "money" | "select" | "textarea";
+  kind: "text" | "email" | "tel" | "number" | "money" | "select" | "textarea" | "images";
   required?: boolean;
   placeholder?: string;
   helper?: string;
@@ -40,6 +40,33 @@ export interface FormFieldSpec {
 
 export type FormValues = Record<string, string>;
 
+/** An image already saved on a record (edit forms). `url` is null until it has been processed. */
+export interface ExistingImage {
+  id: string;
+  alt: string;
+  url: string | null;
+  status: string;
+  reason: string | null;
+}
+
+/** An edit form for live records. `load` fetches the record's current values from the API. */
+export interface EditSpec {
+  label: string;
+  title: string;
+  description: string;
+  fields: readonly FormFieldSpec[];
+  validate?: (values: FormValues) => Partial<Record<string, string>>;
+  load: (row: RecordRow) => Promise<{
+    values: FormValues;
+    images: ExistingImage[];
+    /** Shown above the form, e.g. which pack size is being edited. */
+    note?: string;
+    /** Dropdown options, including the record's current choice even if it has since been archived. */
+    options?: Record<string, readonly string[]>;
+  }>;
+  toast: (values: FormValues) => string;
+}
+
 export interface CreateSpec {
   label: string;
   title: string;
@@ -50,6 +77,8 @@ export interface CreateSpec {
   validate?: (values: FormValues) => Partial<Record<string, string>>;
   toRow: (values: FormValues) => Record<string, Cell>;
   toast: (values: FormValues) => string;
+  /** Live forms: loads dropdown options (field name → options) from the API when the dialog opens. */
+  prepare?: () => Promise<Record<string, readonly string[]>>;
 }
 
 export interface ActionSpec {
@@ -89,6 +118,8 @@ export interface ViewSpec {
   /** A note shown in the detail drawer, e.g. the four-eyes rule. */
   note?: (row: RecordRow) => string | null;
   create?: CreateSpec;
+  /** Live mode only: an Edit button in the detail drawer. */
+  edit?: EditSpec;
   actions?: readonly ActionSpec[];
   /** Records here can't be changed from the panel (audit logs, ledgers). */
   readOnly?: boolean;

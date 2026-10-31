@@ -16,12 +16,15 @@ export function DetailDrawer({
   busy,
   onClose,
   onAction,
+  onEdit,
 }: {
   view: ViewSpec;
   row: RecordRow | null;
   busy: boolean;
   onClose: () => void;
   onAction: (action: ActionSpec, row: RecordRow) => void;
+  /** Opens the edit form; only used when the view has one (live mode). */
+  onEdit?: (row: RecordRow) => void;
 }) {
   const actions = row ? (view.actions ?? []).filter((action) => action.from.includes(row.status)) : [];
   const note = row ? view.note?.(row) : null;
@@ -37,14 +40,20 @@ export function DetailDrawer({
         row ? (
           view.readOnly ? (
             <p className="mr-auto self-center text-[13px] fx-muted">Read-only record. It can&rsquo;t be edited or deleted.</p>
-          ) : actions.length ? (
-            actions.map((action) => (
-              <Button key={action.key} variant={action.variant} disabled={busy} onClick={() => onAction(action, row)}>
-                {action.label}
-              </Button>
-            ))
           ) : (
-            <p className="mr-auto self-center text-[13px] fx-muted">No actions available in this state.</p>
+            <>
+              {view.edit && onEdit ? (
+                <Button variant="secondary" disabled={busy} onClick={() => onEdit(row)}>
+                  Edit
+                </Button>
+              ) : null}
+              {actions.map((action) => (
+                <Button key={action.key} variant={action.variant} disabled={busy} onClick={() => onAction(action, row)}>
+                  {action.label}
+                </Button>
+              ))}
+              {!actions.length && !view.edit ? <p className="mr-auto self-center text-[13px] fx-muted">No actions available in this state.</p> : null}
+            </>
           )
         ) : null
       }

@@ -9,6 +9,7 @@ import {
   Badge,
   Button,
   Card,
+  ComingSoon,
   ConfirmActionDialog,
   DataTable,
   EmptyState,
@@ -18,10 +19,10 @@ import {
   useToast,
 } from "@/components/admin-ui";
 import type { Column, SortState } from "@/components/admin-ui";
-import { MockApiError, listRecords, readPreviewState, transitionRecord } from "../data/mock-api";
-import type { Page, PreviewState } from "../data/mock-api";
+import { MockApiError, applyAction, forMode, hasBackend, isLive, listRecords, readPreviewState } from "../data/api";
+import type { Page, PreviewState } from "../data/api";
 import type { RecordRow } from "../data/records";
-import { CreateDialog } from "./CreateDialog";
+import { CreateDialog, EditDialog } from "./CreateDialog";
 import { DetailDrawer } from "./DetailDrawer";
 import { renderColumn } from "./cells";
 import { amountOf, getModule } from "./registry";
@@ -41,11 +42,12 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
   // being shown may act on it.
   const isShown = pathname === `/admin/${spec.key}`;
   const preview = readPreviewState(searchParams);
-  const createView = spec.views.find((entry) => entry.create);
+  const views = useMemo(() => spec.views.map(forMode), [spec]);
+  const createView = views.find((entry) => entry.create);
   const createFromUrl = isShown && searchParams.get("create") === "1" && createView !== undefined;
-  const [viewKey, setViewKey] = useState(spec.views[0]!.key);
+  const [viewKey, setViewKey] = useState((views.find((entry) => hasBackend(entry.dataset)) ?? views[0]!).key);
   const [createOpenState, setCreateOpen] = useState(false);
-  const view = createFromUrl ? createView : (spec.views.find((entry) => entry.key === viewKey) ?? spec.views[0]!);
+  const view = createFromUrl ? createView : (views.find((entry) => entry.key === viewKey) ?? views[0]!);
   const createOpen = createOpenState || createFromUrl;
   const tabsId = `module-${spec.key}`;
 
@@ -102,7 +104,7 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
         <Tabs
           label={`${spec.title} sections`}
           idPrefix={tabsId}
-          items={spec.views.map((entry) => ({ key: entry.key, label: entry.label }))}
+          items={views.map((entry) => ({ key: entry.key, label: entry.label }))}
           value={view.key}
           onChange={(key) => {
             closeCreate();
@@ -116,14 +118,18 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
         role={spec.views.length > 1 ? "tabpanel" : undefined}
         aria-labelledby={spec.views.length > 1 ? `${tabsId}-tab-${view.key}` : undefined}
       >
-        <ViewPanel
-          key={view.key}
-          view={view}
-          preview={preview}
-          createOpen={createOpen}
-          onCreateClose={closeCreate}
-          onCreateOpen={() => setCreateOpen(true)}
-        />
+        {hasBackend(view.dataset) ? (
+          <ViewPanel
+            key={view.key}
+            view={view}
+            preview={preview}
+            createOpen={createOpen}
+            onCreateClose={closeCreate}
+            onCreateOpen={() => setCreateOpen(true)}
+          />
+        ) : (
+          <ComingSoon module={views.length > 1 ? `${spec.title} · ${view.label}` : spec.title} bare />
+        )}
       </div>
     </div>
   );
@@ -157,6 +163,7 @@ function ViewPanel({
   const [reload, setReload] = useState(0);
   const [result, setResult] = useState<{ key: string; page: Page | null; failed: boolean }>({ key: "", page: null, failed: false });
   const [selected, setSelected] = useState<RecordRow | null>(null);
+  const [editing, setEditing] = useState<RecordRow | null>(null);
   const [pending, setPending] = useState<{ action: ActionSpec; row: RecordRow } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -215,14 +222,16 @@ function ViewPanel({
     }
     setBusy(true);
     try {
-      const updated = await transitionRecord(view.dataset, row.id, action.from, action.to, action.patch?.(row));
+      const updated = await applyAction(view.dataset, row, action);
       setSelected(updated);
       setReload((n) => n + 1);
       toast(action.toast(updated));
     } catch (error) {
       toast(
         error instanceof MockApiError && error.code === "INVALID_TRANSITION"
-          ? "This record changed meanwhile. Refreshed with the latest state."
+          ? isLive && error.message
+            ? `${error.message}. Nothing was changed.`
+            : "This record changed meanwhile. Refreshed with the latest state."
           : "Couldn't apply the action. Nothing was changed.",
         "error"
       );
@@ -284,7 +293,10 @@ function ViewPanel({
         pager={
           page
             ? {
-                summary: `Showing ${from}–${from + page.items.length - 1} of ${page.total} · Cursor-based pagination`,
+                summary:
+                  page.total === null
+                    ? `Showing ${from}–${from + page.items.length - 1} · Cursor-based pagination`
+                    : `Showing ${from}–${from + page.items.length - 1} of ${page.total} · Cursor-based pagination`,
                 hasPrevious: cursors.length > 1,
                 hasNext: page.nextCursor !== null,
                 onPrevious: () => setCursors((stack) => stack.slice(0, -1)),
@@ -300,7 +312,22 @@ function ViewPanel({
         busy={busy}
         onClose={() => setSelected(null)}
         onAction={(action, row) => (action.confirm ? setPending({ action, row }) : void run(action, row))}
+        onEdit={view.edit ? setEditing : undefined}
       />
+
+      {view.edit && editing ? (
+        <EditDialog
+          key={editing.id}
+          spec={view.edit}
+          dataset={view.dataset}
+          row={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            setSelected(saved);
+            setReload((n) => n + 1);
+          }}
+        />
+      ) : null}
 
       {pending?.action.confirm ? (
         <ConfirmActionDialog
