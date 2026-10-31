@@ -37,11 +37,15 @@ const placeSchema = z.object({ id: z.string(), type: z.string(), name: z.string(
 const trailSchema = z.object({ territory: placeSchema, ancestors: z.array(placeSchema) });
 const errorBodySchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
 export interface TransportRequest {
-  method: "GET" | "POST";
+  method: HttpMethod;
   path: string;
   body?: unknown;
   accessToken?: string;
+  /** Extra headers, e.g. Idempotency-Key. */
+  headers?: Record<string, string>;
 }
 
 export interface TransportResponse {
@@ -91,7 +95,7 @@ const REQUEST_TIMEOUT_MS = 12_000;
 const EXPIRY_MARGIN_MS = 30_000;
 
 /** Same-origin by default (next.config rewrites /auth and /access to the API). */
-export const fetchTransport: Transport = async ({ method, path, body, accessToken }) => {
+export const fetchTransport: Transport = async ({ method, path, body, accessToken, headers }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -100,6 +104,7 @@ export const fetchTransport: Transport = async ({ method, path, body, accessToke
       credentials: "include",
       cache: "no-store",
       headers: {
+        ...headers,
         ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
@@ -204,13 +209,19 @@ export function createAuthClient(transport: Transport) {
   }
 
   /** A request that needs the access token; refreshes once and retries on 401. */
-  async function authorized<T>(method: "GET" | "POST", path: string, schema: z.ZodType<T> | null, body?: unknown) {
+  async function authorized<T>(
+    method: HttpMethod,
+    path: string,
+    schema: z.ZodType<T> | null,
+    body?: unknown,
+    headers?: Record<string, string>
+  ) {
     if (!accessToken || Date.now() > expiresAt - EXPIRY_MARGIN_MS) await refresh();
 
-    let response = await send({ method, path, body, accessToken: accessToken ?? undefined });
+    let response = await send({ method, path, body, headers, accessToken: accessToken ?? undefined });
     if (response.status === 401) {
       await refresh();
-      response = await send({ method, path, body, accessToken: accessToken ?? undefined });
+      response = await send({ method, path, body, headers, accessToken: accessToken ?? undefined });
     }
     if (response.status >= 400) throw toError(path, response);
     return schema ? parseBody(path, schema, response) : (undefined as T);
@@ -247,6 +258,11 @@ export function createAuthClient(transport: Transport) {
 
     territory(id: string): Promise<TerritoryTrail> {
       return authorized("GET", `/territories/${encodeURIComponent(id)}`, trailSchema);
+    },
+
+    /** Any other authenticated route. The caller narrows the response; the backend's own validation is the contract. */
+    request<T>(method: HttpMethod, path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+      return authorized(method, path, z.custom<T>(() => true), body, headers);
     },
 
     /** Also signs out the user's other sessions (the backend keeps this one). */
