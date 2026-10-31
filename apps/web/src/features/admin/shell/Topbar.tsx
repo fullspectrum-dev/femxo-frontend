@@ -7,13 +7,17 @@ import { useState } from "react";
 import { StatusBadge } from "@/components/admin-ui";
 import { toggleTheme, useIsDarkTheme } from "@/components/layout/ThemeToggle";
 import type { AuthUser } from "@/features/auth";
+import type { AccessSummary } from "@/features/auth/types/auth";
 import { useAuthSession } from "@/features/auth";
+import { forMode, hasBackend } from "../data/api";
 import { QUICK_LINKS } from "../data/dashboard";
 import { isAdminPrototype } from "../data/data-mode";
 import { initials } from "../format";
+import { MODULES } from "../modules/registry";
 import { findNav } from "../nav";
 import { CommandSearch } from "./CommandSearch";
 import { Popover } from "./Popover";
+import { describeAccess } from "./useAccessSummary";
 
 const BELL_ITEMS = [
   { title: "SMS gateway · OTP queue", meta: "3 retries exhausted", status: "dead_letter", href: "/admin/integrations" },
@@ -21,7 +25,19 @@ const BELL_ITEMS = [
   { title: "Edible oil 1 L", meta: "Patna WH · 18 units left", status: "low_stock", href: "/admin/warehouse" },
 ] as const;
 
-export function Topbar({ user, onMenu, menuLabel }: { user: AuthUser; onMenu: () => void; menuLabel: string }) {
+// Live mode: only the create forms the API supports (taken from the module registry), never a canned list.
+const LIVE_QUICK_LINKS = MODULES.flatMap((module) =>
+  module.views.flatMap((view) => {
+    const create = hasBackend(view.dataset) ? forMode(view).create : undefined;
+    return create ? [{ label: create.label, href: `/admin/${module.key}?create=1` }] : [];
+  })
+);
+
+export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; access: AccessSummary | null; onMenu: () => void; menuLabel: string }) {
+  // Notifications have no API yet: live mode shows none rather than the prototype's sample alerts.
+  const bellItems = isAdminPrototype ? BELL_ITEMS : [];
+  const quickLinks = isAdminPrototype ? QUICK_LINKS : LIVE_QUICK_LINKS;
+  const who = describeAccess(access);
   const pathname = usePathname();
   const isDark = useIsDarkTheme();
   const themeLabel = isDark ? "Switch to light mode" : "Switch to dark mode";
@@ -42,7 +58,7 @@ export function Topbar({ user, onMenu, menuLabel }: { user: AuthUser; onMenu: ()
         {/* Phone: brand + role, as on the Mobile 390 canvas */}
         <div className="min-w-0 flex-1 md:hidden">
           <p className="fx-display text-[19px] font-bold leading-tight">Femxo</p>
-          <p className="truncate text-[12px] fx-muted">Super Admin{isAdminPrototype ? " · Staging" : ""}</p>
+          <p className="truncate text-[12px] fx-muted">{who.role}{isAdminPrototype ? " · Staging" : ""}</p>
         </div>
 
         <nav aria-label="Breadcrumb" className="hidden min-w-0 lg:block">
@@ -79,12 +95,13 @@ export function Topbar({ user, onMenu, menuLabel }: { user: AuthUser; onMenu: ()
           <Search size={20} aria-hidden="true" />
         </button>
 
+        {quickLinks.length ? (
         <div className="hidden md:block">
           <Popover label="Quick actions" triggerClassName="fx-icon-btn" trigger={<Zap size={19} aria-hidden="true" />}>
             {(close) => (
               <ul>
                 <li className="px-3 pb-1 pt-1 fx-label">Quick actions</li>
-                {QUICK_LINKS.map((link) => (
+                {quickLinks.map((link) => (
                   <li key={link.label}>
                     <Link href={link.href} className="fx-menu-item" onClick={close}>
                       {link.label}
@@ -95,6 +112,7 @@ export function Topbar({ user, onMenu, menuLabel }: { user: AuthUser; onMenu: ()
             )}
           </Popover>
         </div>
+        ) : null}
 
         <Popover
           label="Notifications"
@@ -103,16 +121,17 @@ export function Topbar({ user, onMenu, menuLabel }: { user: AuthUser; onMenu: ()
           trigger={
             <>
               <Bell size={19} aria-hidden="true" />
-              <span className="fx-dot" aria-hidden="true" />
-              <span className="sr-only">, {BELL_ITEMS.length} new</span>
+              {bellItems.length ? <span className="fx-dot" aria-hidden="true" /> : null}
+              <span className="sr-only">{bellItems.length ? `, ${bellItems.length} new` : ", none new"}</span>
             </>
           }
         >
           {(close) => (
             <div>
               <p className="px-3 pb-2 pt-1 fx-label">Needs attention</p>
+              {bellItems.length ? null : <p className="px-3 pb-3 text-[13px] fx-muted">Nothing needs attention.</p>}
               <ul>
-                {BELL_ITEMS.map((item) => (
+                {bellItems.map((item) => (
                   <li key={item.title}>
                     <Link href={item.href} className="fx-menu-item items-start justify-between" onClick={close}>
                       <span className="min-w-0">

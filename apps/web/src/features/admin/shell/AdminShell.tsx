@@ -9,12 +9,14 @@ import type { AuthUser } from "@/features/auth";
 import { BOTTOM_NAV, MORE_ICON } from "../nav";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { useAccessSummary } from "./useAccessSummary";
 import { MAX_WIDTH, MIN_WIDTH, RAIL_WIDTH, useSidebarLayout } from "./useSidebarLayout";
 
 /** Layout breakpoints and sidebar behaviour: see useSidebarLayout. */
 export function AdminShell({ user, children }: { user: AuthUser; children: ReactNode }) {
   const pathname = usePathname();
   const layout = useSidebarLayout();
+  const access = useAccessSummary();
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Tablets and desktops expand the pinned sidebar instead; the drawer is for phones.
   const showDrawer = drawerOpen && layout.viewport === "phone";
@@ -67,6 +69,7 @@ export function AdminShell({ user, children }: { user: AuthUser; children: React
         aria-label="Sidebar"
       >
         <Sidebar
+          access={access}
           rail={layout.rail}
           toggle={{ label: menuLabel, expand: layout.rail, onClick: layout.toggleSidebar }}
         />
@@ -88,7 +91,7 @@ export function AdminShell({ user, children }: { user: AuthUser; children: React
       >
         {showDrawer ? (
           <div className="relative h-full">
-            <Sidebar onNavigate={() => setDrawerOpen(false)} />
+            <Sidebar access={access} onNavigate={() => setDrawerOpen(false)} />
             <button
               type="button"
               aria-label="Close navigation"
@@ -103,7 +106,7 @@ export function AdminShell({ user, children }: { user: AuthUser; children: React
       </dialog>
 
       <div className="fx-shell-main flex min-h-dvh min-w-0 flex-col" style={{ paddingLeft: layout.pinnedWidth }}>
-        <Topbar user={user} onMenu={toggleMenu} menuLabel={menuLabel} />
+        <Topbar user={user} access={access} onMenu={toggleMenu} menuLabel={menuLabel} />
         <main id="admin-main" tabIndex={-1} className="mx-auto w-full min-w-0 max-w-[1480px] flex-1 px-4 pb-28 pt-5 md:px-6 md:pb-10 md:pt-6 xl:px-7">
           {children}
         </main>

@@ -7,6 +7,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { isAdminPrototype } from "../data/data-mode";
 import { NAV_GROUPS } from "../nav";
+import type { AccessSummary } from "@/features/auth/types/auth";
+import { useNavBadges } from "./useNavBadges";
+import { describeAccess } from "./useAccessSummary";
 
 /**
  * The dark sidebar: brand, who you're signed in as, the module groups. As a
@@ -14,16 +17,21 @@ import { NAV_GROUPS } from "../nav";
  * The brand stays at the top and the toggle at the foot; the middle scrolls.
  */
 export function Sidebar({
+  access,
   onNavigate,
   rail = false,
   toggle,
 }: {
+  /** From GET /access/me; null while loading. */
+  access: AccessSummary | null;
   onNavigate?: () => void;
   rail?: boolean;
   /** The expand / collapse button at the foot (left out in the drawer). */
   toggle?: { label: string; expand: boolean; onClick: () => void };
 }) {
   const pathname = usePathname();
+  const badges = useNavBadges(pathname);
+  const who = describeAccess(access);
   const ToggleIcon = toggle?.expand ? ChevronsRight : ChevronsLeft;
 
   return (
@@ -36,29 +44,29 @@ export function Sidebar({
       >
         <Image src="/images/femxo-mark-white.png" alt="" width={390} height={570} className="h-9 w-auto" priority />
         {rail ? (
-          <span className="sr-only">Femxo Super Admin</span>
+          <span className="sr-only">Femxo {who.role}</span>
         ) : (
           <span className="leading-none">
             <span className="fx-display block text-[22px] font-bold text-white">Femxo</span>
-            <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">Super Admin</span>
+            <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{who.role}</span>
           </span>
         )}
       </Link>
 
       <div className={cn("fx-scroll min-h-0 flex-1 pb-4", rail ? "px-2" : "pl-4 pr-2")}>
         {rail ? (
-          <p className="mx-auto mt-4 grid h-9 w-9 place-items-center rounded-[10px] bg-white/5 text-white/80" title="Viewing as Super Admin · All territories">
+          <p className="mx-auto mt-4 grid h-9 w-9 place-items-center rounded-[10px] bg-white/5 text-white/80" title={`Viewing as ${who.role} · ${who.scope}`}>
             <Shield size={16} aria-hidden="true" />
-            <span className="sr-only">Viewing as Super Admin, all territories</span>
+            <span className="sr-only">Viewing as {who.role}, {who.scope}</span>
           </p>
         ) : (
           <div className="fx-sidebar-card mt-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60">Viewing as</p>
             <p className="mt-1.5 flex items-center gap-2 text-[13px] font-semibold text-white">
               <Shield size={14} aria-hidden="true" />
-              Super Admin
+              {who.role}
             </p>
-            <p className="mt-1 text-[12px] text-white/70">All territories · Full access</p>
+            <p className="mt-1 text-[12px] text-white/70">{who.scope}</p>
           </div>
         )}
 
@@ -70,20 +78,21 @@ export function Sidebar({
                 {group.items.map((item) => {
                   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const Icon = item.icon;
+                  const badge = badges[item.key];
                   return (
                     <li key={item.key}>
                       <Link
                         href={item.href}
                         className="fx-nav-link"
                         aria-current={active ? "page" : undefined}
-                        title={rail ? (item.badge ? `${item.label} · ${item.badge} waiting` : item.label) : undefined}
+                        title={rail ? (badge ? `${item.label} · ${badge} waiting` : item.label) : undefined}
                         onClick={onNavigate}
                       >
                         <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                         <span className="fx-nav-label">{item.label}</span>
-                        {item.badge ? (
+                        {badge ? (
                           <span className="fx-count">
-                            {item.badge}
+                            {badge}
                             <span className="sr-only"> waiting</span>
                           </span>
                         ) : null}
