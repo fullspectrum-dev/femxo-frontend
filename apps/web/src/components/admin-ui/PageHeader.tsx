@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { isAdminPrototype } from "@/features/admin/data/data-mode";
 
 /** Module page title row; primary action on the right when permitted. */
 export function PageHeader({
@@ -16,7 +15,6 @@ export function PageHeader({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="fx-h1">{title}</h1>
-          {isAdminPrototype ? <span className="fx-chip-proto fx-chip-proto--light">Prototype data</span> : null}
         </div>
         {description ? <p className="mt-2 max-w-[640px] text-[14px] fx-muted">{description}</p> : null}
       </div>

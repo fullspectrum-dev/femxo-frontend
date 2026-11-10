@@ -61,3 +61,71 @@ export async function categoryChoices(): Promise<Map<string, string>> {
   };
   return new Map(res.categories.filter((c) => c.status !== "archived").map((c) => [label(c), c.id]));
 }
+
+// ---------- Names for the partner, order and stock screens ----------
+
+const territoryCache = new Map<string, Promise<string>>();
+
+/** "district:230" → "Patna". A failed lookup answers with the id itself, so a list never fails over a name. */
+export async function territoryNames(ids: readonly string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const entries = await Promise.all(
+    unique.map(async (id) => {
+      let hit = territoryCache.get(id);
+      if (!hit) {
+        hit = api
+          .get<{ territory: { name: string } }>(`/territories/${id}`)
+          .then((res) => res.territory.name)
+          .catch(() => {
+            territoryCache.delete(id);
+            return id;
+          });
+        territoryCache.set(id, hit);
+      }
+      return [id, await hit] as const;
+    })
+  );
+  return new Map(entries);
+}
+
+/** The most specific place a row sits in: the last id of its `territoryPath`. */
+export const lastOf = (path: readonly string[] | undefined) => path?.at(-1) ?? "";
+
+interface VariantInfo {
+  label: string;
+  productName: string;
+  sku: string;
+}
+let variantTable: Promise<Map<string, VariantInfo>> | undefined;
+
+/** variantId → what a person recognises ("Sunflower oil · 1 l (FX-OIL-1L)"). Needs catalog access; callers fall back to a dash. */
+export function variantInfo(): Promise<Map<string, VariantInfo>> {
+  variantTable ??= (async () => {
+    const table = new Map<string, VariantInfo>();
+    let cursor: string | null = null;
+    for (let page = 0; page < 50; page++) {
+      const res: { products?: { name: string; variants: { id: string; sku: string; label?: string }[] }[]; nextCursor?: string | null } =
+        await api.get("/catalog/admin/products", { limit: 100, cursor });
+      for (const product of res.products ?? []) {
+        for (const variant of product.variants) table.set(variant.id, { productName: product.name, sku: variant.sku, label: variant.label ?? "" });
+      }
+      cursor = res.nextCursor ?? null;
+      if (!cursor) break;
+    }
+    return table;
+  })().catch((error) => {
+    variantTable = undefined;
+    throw error;
+  });
+  return variantTable;
+}
+
+export const variantTitle = (info: VariantInfo | undefined) =>
+  info ? `${info.productName}${info.label ? ` · ${info.label}` : ""}` : "—";
+
+/** Resets the lookup caches. For tests, and after something the names depend on changed. */
+export function clearLookupCaches() {
+  cache.clear();
+  territoryCache.clear();
+  variantTable = undefined;
+}

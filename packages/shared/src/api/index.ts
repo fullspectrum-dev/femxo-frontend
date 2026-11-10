@@ -1,3 +1,4 @@
+export { createStoreAdapter } from "../adapters/store/store-adapter";
 export { createHttpAdapter } from "../adapters/http/http-adapter";
 export type { HttpAdapterOptions } from "../adapters/http/http-adapter";
 export { isWrite } from "./adapter";

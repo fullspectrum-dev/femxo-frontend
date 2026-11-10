@@ -96,6 +96,8 @@ export interface ActionSpec {
     description: string;
     amountKey?: string;
     confirmLabel: string;
+    /** Asks for a written reason (kept in the audit log) before the action runs. Live mode only. */
+    reason?: { label: string; min: number };
   };
   toast: (row: RecordRow) => string;
   patch?: (row: RecordRow) => Record<string, Cell>;

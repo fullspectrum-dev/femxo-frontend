@@ -4,7 +4,6 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { isAdminPrototype } from "../data/data-mode";
 import { NAV_ITEMS } from "../nav";
 
 /**
@@ -72,7 +71,7 @@ export function CommandSearch({ autoFocus }: { autoFocus?: boolean }) {
           aria-controls={listId}
           aria-activedescendant={showList && results[active] ? `${listId}-${active}` : undefined}
           autoFocus={autoFocus}
-          placeholder={isAdminPrototype ? "Search modules, dealers, orders…" : "Search modules…"}
+          placeholder="Search modules…"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);

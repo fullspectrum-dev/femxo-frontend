@@ -1,5 +1,4 @@
 export { cn } from "./cn";
-export { DemoBadge } from "./DemoBadge";
 export { Badge } from "./components/Badge";
 export type { BadgeTone } from "./components/Badge";
 export { Button, buttonClasses, IconButton } from "./components/Button";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "./Button";
-import { Checkbox } from "./FormField";
+import { Checkbox, FormField, TextArea } from "./FormField";
 import { Dialog } from "./Overlay";
 
 export type ConfirmKind = "financial" | "destructive";
@@ -23,10 +23,12 @@ export function ConfirmActionDialog({
   amountLabel = "Amount affected",
   record,
   confirmLabel,
+  reason,
 }: {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  /** Gets the written reason when `reason` was asked for. */
+  onConfirm: (reason?: string) => void;
   kind: ConfirmKind;
   title: string;
   description: string;
@@ -34,11 +36,16 @@ export function ConfirmActionDialog({
   amountLabel?: string;
   record: string;
   confirmLabel: string;
+  /** Asks for a written reason of at least `min` characters (kept in the audit log). */
+  reason?: { label: string; min: number };
 }) {
   const [understood, setUnderstood] = useState(false);
+  const [text, setText] = useState("");
+  const reasonOk = !reason || text.trim().length >= reason.min;
 
   const close = () => {
     setUnderstood(false);
+    setText("");
     onClose();
   };
 
@@ -55,10 +62,12 @@ export function ConfirmActionDialog({
           </Button>
           <Button
             variant={kind === "financial" ? "gold" : "danger"}
-            disabled={!understood}
+            disabled={!understood || !reasonOk}
             onClick={() => {
+              const given = text.trim();
               setUnderstood(false);
-              onConfirm();
+              setText("");
+              onConfirm(reason ? given : undefined);
             }}
           >
             {confirmLabel}
@@ -76,6 +85,13 @@ export function ConfirmActionDialog({
         <p className="text-[13px]">
           <span className="font-semibold">Affected record:</span> {record}
         </p>
+        {reason ? (
+          <FormField label={reason.label} required helper={`At least ${reason.min} characters. Kept in the audit log.`}>
+            {({ inputId, describedBy }) => (
+              <TextArea id={inputId} aria-describedby={describedBy} value={text} onChange={(event) => setText(event.target.value)} rows={3} />
+            )}
+          </FormField>
+        ) : null}
         <Checkbox checked={understood} onChange={setUnderstood}>
           I understand this cannot be undone.
         </Checkbox>

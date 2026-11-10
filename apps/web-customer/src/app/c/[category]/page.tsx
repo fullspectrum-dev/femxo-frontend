@@ -31,7 +31,7 @@ function FirstPage({ initial }: { initial: SearchResult }) {
 async function getCategoryPage(slug: string) {
   "use cache";
   cacheLife("hours");
-  const categories = await serverProducts().categories();
+  const categories = await serverProducts().categories().catch(() => []);
   const category = categories.find((entry) => entry.slug === slug);
   if (!category) return null;
   const parent = categories.find((entry) => entry.id === category.parentId) ?? null;
@@ -47,8 +47,13 @@ export const instant = false;
 
 // Every category is built ahead of time; the first page is already in the HTML.
 export async function generateStaticParams() {
-  const categories = await serverProducts().categories();
-  return categories.map((category) => ({ category: category.slug }));
+  try {
+    const categories = await serverProducts().categories();
+    if (categories.length) return categories.map((category) => ({ category: category.slug }));
+  } catch {
+    // The catalog isn't reachable while building: pages are then built on the first visit.
+  }
+  return [{ category: "_" }];
 }
 
 export async function generateMetadata({ params }: PageProps<"/c/[category]">): Promise<Metadata> {

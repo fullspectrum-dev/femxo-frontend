@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { isAdminPrototype } from "../data/data-mode";
 import { NAV_GROUPS } from "../nav";
 import type { AccessSummary } from "@/features/auth/types/auth";
 import { useNavBadges } from "./useNavBadges";
@@ -105,14 +104,6 @@ export function Sidebar({
           ))}
         </nav>
 
-        {isAdminPrototype && !rail ? (
-          <div className="fx-sidebar-card fx-sidebar-card--proto mt-6">
-            <p className="text-[12px] font-semibold text-[#ffd98a]">Prototype mode</p>
-            <p className="mt-1 text-[12px] leading-snug text-white/80">
-              All figures are sample data. No live integrations are connected.
-            </p>
-          </div>
-        ) : null}
       </div>
 
       {toggle ? (

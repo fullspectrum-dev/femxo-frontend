@@ -1,20 +1,23 @@
+import { cacheLife } from "next/cache";
+import { serverProducts } from "@/lib/server-api";
+
 export interface NavCategory {
   slug: string;
   name: string;
 }
 
 /**
- * Top categories for the shell (same set as the admin catalogue).
- * Placeholder until G4, when they come from ProductsApi.categories() over the
- * seeded catalogue.
+ * The top-level categories from the catalog, for the header and the phone bottom bar. If the catalog can't be
+ * reached the nav is empty (the page still works) and the answer is kept only briefly.
  */
-export const TOP_CATEGORIES: readonly NavCategory[] = [
-  { slug: "staples", name: "Staples" },
-  { slug: "edible-oil", name: "Edible oil" },
-  { slug: "pulses", name: "Pulses & dal" },
-  { slug: "snacks", name: "Snacks" },
-  { slug: "beverages", name: "Beverages" },
-  { slug: "personal-care", name: "Personal care" },
-  { slug: "home-care", name: "Home care" },
-  { slug: "seasonal", name: "Seasonal" },
-];
+export async function loadTopCategories(): Promise<readonly NavCategory[]> {
+  "use cache";
+  try {
+    const all = await serverProducts().categories();
+    cacheLife("minutes");
+    return all.filter((c) => c.parentId === null).map(({ slug, name }) => ({ slug, name }));
+  } catch {
+    cacheLife("seconds");
+    return [];
+  }
+}

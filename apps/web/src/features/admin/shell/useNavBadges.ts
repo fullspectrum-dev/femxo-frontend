@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { isAdminPrototype } from "../data/data-mode";
 import type { ModuleKey } from "../nav";
 
 /** The API's page size cap: counting more than one page would take many calls, so show "100+". */
@@ -22,7 +21,6 @@ export function useNavBadges(pathname: string): Badges {
   const [badges, setBadges] = useState<Badges>({});
 
   useEffect(() => {
-    if (isAdminPrototype) return;
     let cancelled = false;
     api
       .get<{ transfers: { status: string }[]; nextCursor: string | null }>("/inventory/transfers", { limit: PAGE })

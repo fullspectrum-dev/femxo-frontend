@@ -57,6 +57,7 @@ export const STATUS_META = {
   draft: { label: "Draft", tone: "neutral" },
   archived: { label: "Archived", tone: "neutral" },
   retried: { label: "Retried", tone: "neutral" },
+  inactive: { label: "Inactive", tone: "neutral" },
   not_required: { label: "Not required", tone: "neutral" },
 } as const satisfies Record<string, { label: string; tone: BadgeTone }>;
 

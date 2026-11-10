@@ -6,28 +6,19 @@
   "exports": {
     ".": "./src/index.ts",
     "./contracts": "./src/contracts/index.ts",
-    "./api": "./src/api/index.ts",
-    "./mock": "./src/adapters/mock/index.ts",
-    "./demo": "./src/mock/index.ts"
+    "./api": "./src/api/index.ts"
   },
   "scripts": {
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "seed:images": "tsx scripts/seed-images.ts"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "eslint": "^9",
-    "fake-indexeddb": "^6.2.6",
-    "sharp": "^0.35.5",
-    "tsx": "^4.23.15",
     "typescript": "^5",
-    "typescript-eslint": "^8.71.2",
-    "vitest": "^5.0.4"
+    "typescript-eslint": "^8.71.2"
   },
   "dependencies": {
-    "idb-keyval": "^6.3.0",
     "zod": "^4.6.7"
   }
 }

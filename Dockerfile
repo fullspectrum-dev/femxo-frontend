@@ -21,9 +21,6 @@ RUN pnpm install --frozen-lockfile --filter @femxo/web...
 FROM base AS build
 ARG FEMXO_API_ORIGIN=http://localhost:3000
 ARG NEXT_PUBLIC_API_BASE_URL=
-# Dummy data (demo sign-in) until the backend is connected; pass
-# --build-arg NEXT_PUBLIC_AUTH_DEMO_MODE=false to use the real API.
-ARG NEXT_PUBLIC_AUTH_DEMO_MODE=true
 ENV FEMXO_API_ORIGIN=$FEMXO_API_ORIGIN \
     NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_PUBLIC_AUTH_DEMO_MODE=$NEXT_PUBLIC_AUTH_DEMO_MODE \

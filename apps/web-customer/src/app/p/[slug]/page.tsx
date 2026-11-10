@@ -14,6 +14,8 @@ import { t } from "@/i18n";
 async function getProductPage(slug: string) {
   "use cache";
   cacheLife("hours");
+  // "_" is only the placeholder built when the catalog is unreachable at build time.
+  if (slug === "_") return null;
   const api = serverProducts();
   try {
     const [product, related, reviews] = await Promise.all([api.detail(slug), api.related(slug), api.reviews(slug)]);
@@ -28,15 +30,13 @@ async function getProductPage(slug: string) {
 export const instant = false;
 
 export async function generateStaticParams() {
-  const api = serverProducts();
-  const slugs: string[] = [];
-  let cursor: string | undefined;
-  do {
-    const { items, nextCursor } = await api.list({ limit: 100, cursor });
-    slugs.push(...items.map((item) => item.slug));
-    cursor = nextCursor ?? undefined;
-  } while (cursor);
-  return slugs.map((slug) => ({ slug }));
+  try {
+    const { items } = await serverProducts().list({ limit: 100 });
+    if (items.length) return items.map((item) => ({ slug: item.slug }));
+  } catch {
+    // The catalog isn't reachable while building: pages are then built on the first visit.
+  }
+  return [{ slug: "_" }];
 }
 
 export async function generateMetadata({ params }: PageProps<"/p/[slug]">): Promise<Metadata> {

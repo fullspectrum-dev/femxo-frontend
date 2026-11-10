@@ -1,16 +1,20 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
-// Dummy data (demo mode) is the default until the backend is connected; see
-// src/features/auth/services/demo-mode.ts. Must match the check there.
-const backendConnected = process.env.NEXT_PUBLIC_AUTH_DEMO_MODE === "false";
-
 // Where femxo-backend runs. The browser calls /auth, /access and /territories
 // on this site and Next forwards them (plus users, inventory, catalog, cms and sales-territories), so the API's refresh cookie
 // (Path=/auth, SameSite=Strict) works without CORS. Set
 // NEXT_PUBLIC_API_BASE_URL instead to call the API origin directly.
 // Read at build time: rewrites are baked into the build output.
 const apiOrigin = (process.env.FEMXO_API_ORIGIN || "http://localhost:3000").replace(/\/$/, "");
+
+// Every femxo-backend route group the admin panel calls. `/admin/dead-letters` is added separately: it
+// lives under the panel's own /admin pages, so only that exact path is forwarded.
+const API_PREFIXES = [
+  "auth", "access", "territories", "sales-territories", "users", "inventory", "catalog", "cms",
+  "approvals", "dealer", "sub-dealers", "customers", "orders", "billing", "finance", "wallets", "ledger",
+  "membership", "reports", "notifications", "dashboard", "delivery", "cod", "commission", "settlement",
+];
 
 // Account types used to have their own sign-in pages; there is one now.
 const OLD_PORTALS = "customer|dealer|sub-dealer|retail-partner|super-admin";
@@ -51,11 +55,9 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
   async rewrites() {
-    // Nothing to forward to while the site runs on dummy data.
-    if (!backendConnected) return [];
-    return ["auth", "access", "territories", "sales-territories", "users", "inventory", "catalog", "cms"].map((prefix) => ({
-      source: `/${prefix}/:path*`,
-      destination: `${apiOrigin}/${prefix}/:path*`,
+    return [...API_PREFIXES.map((prefix) => `/${prefix}`), "/admin/dead-letters"].map((base) => ({
+      source: `${base}/:path*`,
+      destination: `${apiOrigin}${base}/:path*`,
     }));
   },
   async redirects() {
@@ -68,16 +70,6 @@ const nextConfig: NextConfig = {
       { source: `/:portal(${OLD_PORTALS})/forgot-password`, destination: "/forgot-password", permanent: false },
       { source: `/:portal(${OLD_PORTALS})/coming-soon`, destination: "/account", permanent: false },
     ];
-  },
-  turbopack: {
-    resolveAlias:
-      // Once connected, production builds drop the demo accounts entirely.
-      process.env.NODE_ENV === "production" && backendConnected
-        ? {
-            "@/features/auth/services/demo-backend":
-              "./src/features/auth/services/demo-backend-disabled.ts",
-          }
-        : {},
   },
 };
 

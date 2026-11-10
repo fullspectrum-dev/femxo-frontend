@@ -5,7 +5,6 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Logo } from "@/components/shared/Logo";
 import { ROLES } from "@/lib/roles";
 import { cn } from "@/lib/utils";
-import { isAuthDemoMode } from "../services/demo-mode";
 
 interface AuthShellProps {
   eyebrow: string;
@@ -85,17 +84,6 @@ export function AuthShell({ eyebrow, title, description, children, wide }: AuthS
               {title}
             </h1>
             {description && <div className="mt-3 text-base leading-relaxed text-muted-foreground">{description}</div>}
-
-            {isAuthDemoMode && (
-              <p
-                role="note"
-                aria-label="Demo mode notice"
-                className="mt-6 rounded-xl border border-gold-400/50 bg-gold-400/10 px-4 py-3 text-xs leading-relaxed text-foreground"
-              >
-                <strong className="font-semibold">Demo mode.</strong> Sign-in runs in your browser with
-                test accounts only. Never enter real details.
-              </p>
-            )}
 
             <div className="mt-8">{children}</div>
           </section>

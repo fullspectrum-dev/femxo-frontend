@@ -1,3 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`catalogue seed > is identical on every build (fixed seed), and changes only on purpose 1`] = `"87f836d3"`;

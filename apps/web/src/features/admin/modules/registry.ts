@@ -1,7 +1,7 @@
 import type { StatusKey, TimelineStep } from "@/components/admin-ui";
 import type { RecordRow } from "../data/records";
 import { formatDate, formatINR } from "../format";
-import type { ActionSpec, FormFieldSpec, ModuleSpec, ViewSpec } from "./types";
+import type { ActionSpec, ModuleSpec, ViewSpec } from "./types";
 
 /*
  * Every admin module, described as data: columns, filters, forms, workflow
@@ -9,35 +9,6 @@ import type { ActionSpec, FormFieldSpec, ModuleSpec, ViewSpec } from "./types";
  * one tested implementation instead of 15 copies. Actions mirror the state
  * machines in femxo-backend docs/admin-panel/system-design.md §9.
  */
-
-// ---------- Shared vocabularies (prototype) ----------
-
-const DISTRICTS = [
-  "Patna", "Gaya", "Muzaffarpur", "Bhagalpur", "Darbhanga", "Purnia", "Saharsa",
-  "Begusarai", "Purbi Champaran", "Saran", "Vaishali", "Bhojpur", "Nalanda", "Siwan",
-] as const;
-const WAREHOUSES = ["Patna WH", "Gaya WH", "Muzaffarpur WH"] as const;
-const ACTIVE_DEALERS = [
-  "Anand Agencies", "Mithila Traders", "Magadh Supply", "Tirhut Wholesale",
-  "Champaran Distributors", "Vaishali Enterprises", "Bhojpur Agencies", "Nalanda Goods",
-] as const;
-
-const GSTIN = { regex: /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, message: "Enter a valid 15-character GSTIN." };
-const PAN = { regex: /^[A-Z]{5}\d{4}[A-Z]$/, message: "Enter a valid 10-character PAN." };
-const MOBILE = { regex: /^[6-9]\d{9}$/, message: "Enter a 10-digit mobile number." };
-const EMAIL = { regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Enter a valid email address." };
-
-const today = () => new Date().toISOString().slice(0, 10);
-const now = () => new Date().toISOString();
-const rupeesToPaise = (value: string) => Math.round(Number(value) * 100);
-const maskPhone = (phone: string) => `${phone.slice(0, 2)}•••••${phone.slice(-3)}`;
-
-const counters = new Map<string, number>();
-function nextCode(prefix: string, start: number, width = 4) {
-  const value = (counters.get(prefix) ?? start) + 1;
-  counters.set(prefix, value);
-  return `${prefix}-${String(value).padStart(width, "0")}`;
-}
 
 /** Steps before `current` are done, `current` is in progress, the rest upcoming. */
 function steps(labels: readonly string[], current: number, opts: { failed?: boolean; metas?: Record<number, string> } = {}): TimelineStep[] {
@@ -98,12 +69,6 @@ function kycActions(entity: "Dealer" | "Sub-dealer"): ActionSpec[] {
   ];
 }
 
-const partnerFields = (extra: readonly FormFieldSpec[]): FormFieldSpec[] => [
-  { name: "name", label: "Business name", kind: "text", required: true, placeholder: "Anand Agencies" },
-  ...extra,
-  { name: "phone", label: "Mobile number", kind: "tel", required: true, placeholder: "10-digit mobile", pattern: MOBILE },
-];
-
 const dealersView: ViewSpec = {
   key: "dealers",
   label: "Dealers",
@@ -132,23 +97,6 @@ const dealersView: ViewSpec = {
   subtitle: (r) => `Dealer · ${r.district}`,
   timeline: { label: "Approval timeline", steps: kycTimeline },
   note: (r) => (r.status === "in_review" ? "Four-eyes rule: the approver must be different from the KYC reviewer." : null),
-  create: {
-    label: "Add dealer",
-    title: "Add dealer",
-    description: "Creates a KYC application. The dealer becomes active after review, approval and territory allocation.",
-    fields: partnerFields([
-      { name: "owner", label: "Owner name", kind: "text", required: true },
-      { name: "district", label: "District", kind: "select", required: true, options: DISTRICTS },
-      { name: "gstin", label: "GSTIN", kind: "text", required: true, uppercase: true, placeholder: "10ABCDE1234F1Z5", pattern: GSTIN },
-      { name: "pan", label: "PAN", kind: "text", required: true, uppercase: true, placeholder: "ABCDE1234F", pattern: PAN },
-    ]),
-    status: "submitted",
-    toRow: (v) => ({
-      code: nextCode("DL", 14), name: v.name!, owner: v.owner!, district: v.district!, phone: maskPhone(v.phone!),
-      gstin: v.gstin!, wallet: 0, joined: today(),
-    }),
-    toast: (v) => `${v.name} submitted for KYC review.`,
-  },
   actions: kycActions("Dealer"),
   empty: { title: "No dealers yet", message: "Add the first dealer to start the network." },
   pageSize: 8,
@@ -181,22 +129,6 @@ const subDealersView: ViewSpec = {
   subtitle: (r) => `Sub-dealer · ${r.village}`,
   timeline: { label: "Approval timeline", steps: kycTimeline },
   note: () => "The sub-dealer's village must lie inside the parent dealer's territory.",
-  create: {
-    label: "Add sub-dealer",
-    title: "Add sub-dealer",
-    description: "Creates a KYC application under a dealer.",
-    fields: partnerFields([
-      { name: "parent", label: "Parent dealer", kind: "select", required: true, options: ACTIVE_DEALERS },
-      { name: "village", label: "Village / town", kind: "text", required: true },
-      { name: "district", label: "District", kind: "select", required: true, options: DISTRICTS },
-    ]),
-    status: "submitted",
-    toRow: (v) => ({
-      code: nextCode("SD", 10), name: v.name!, parent: v.parent!, village: v.village!, district: v.district!,
-      phone: maskPhone(v.phone!), joined: today(),
-    }),
-    toast: (v) => `${v.name} submitted for KYC review.`,
-  },
   actions: kycActions("Sub-dealer"),
   empty: { title: "No sub-dealers yet", message: "Sub-dealers appear here once dealers add them." },
 };
@@ -232,20 +164,6 @@ export const MODULES: readonly ModuleSpec[] = [
         ],
         recordName: (r) => String(r.name),
         subtitle: (r) => String(r.role),
-        create: {
-          label: "Add user",
-          title: "Add user",
-          description: "They get a temporary password and must change it on first sign-in.",
-          fields: [
-            { name: "name", label: "Full name", kind: "text", required: true },
-            { name: "email", label: "Work email", kind: "email", required: true, pattern: EMAIL },
-            { name: "role", label: "Role", kind: "select", required: true, options: ["Admin", "Finance Admin", "Compliance", "Warehouse Manager", "Field staff"] },
-            { name: "scope", label: "Territory", kind: "select", required: true, options: ["Bihar", "Patna district", "Gaya district", "Patna WH", "Gaya WH", "Patna West"] },
-          ],
-          status: "active",
-          toRow: (v) => ({ name: v.name!, email: v.email!.toLowerCase(), role: v.role!, scope: v.scope!, lastLogin: null }),
-          toast: (v) => `${v.name} added. Temporary password sent.`,
-        },
         actions: [
           {
             key: "disable", label: "Disable user", from: ["active"], to: "disabled", variant: "danger",
@@ -397,28 +315,6 @@ export const MODULES: readonly ModuleSpec[] = [
         ],
         recordName: (r) => `${r.sku} · ${r.name}`,
         subtitle: (r) => `${r.brand} · ${r.category}`,
-        create: {
-          label: "Add product",
-          title: "Add product",
-          description: "New products start as drafts and go live when published.",
-          fields: [
-            { name: "name", label: "Product name", kind: "text", required: true, placeholder: "Edible oil 1 L" },
-            { name: "sku", label: "SKU", kind: "text", required: true, uppercase: true, placeholder: "FX-OIL-1L", pattern: { regex: /^[A-Z0-9-]{4,20}$/, message: "Use 4–20 capital letters, digits or dashes." } },
-            { name: "brand", label: "Brand", kind: "select", required: true, options: ["Femxo Select", "Femxo Daily"] },
-            { name: "category", label: "Category", kind: "select", required: true, options: ["Staples", "Edible oil", "Pulses", "Snacks", "Beverages", "Personal care", "Home care"] },
-            { name: "hsn", label: "HSN code", kind: "text", required: true, placeholder: "1507", pattern: { regex: /^\d{4,8}$/, message: "HSN is 4 to 8 digits." } },
-            { name: "gst", label: "GST rate", kind: "select", required: true, options: ["0%", "5%", "18%", "40%"] },
-            { name: "mrp", label: "MRP (₹)", kind: "money", required: true, min: 1 },
-            { name: "dealerPrice", label: "Dealer price (₹)", kind: "money", required: true, min: 1 },
-          ],
-          validate: (v) => (Number(v.dealerPrice) > Number(v.mrp) ? { dealerPrice: "Dealer price can't be above MRP." } : {}),
-          status: "draft",
-          toRow: (v) => ({
-            name: v.name!, sku: v.sku!, brand: v.brand!, category: v.category!, mrp: rupeesToPaise(v.mrp!),
-            dealerPrice: rupeesToPaise(v.dealerPrice!), gst: Number(v.gst!.replace("%", "")) * 100,
-          }),
-          toast: (v) => `${v.name} saved as draft.`,
-        },
         actions: [
           { key: "publish", label: "Publish", from: ["draft"], to: "active", variant: "primary", toast: (r) => `${r.name} is live in the catalogue.` },
           {
@@ -502,20 +398,6 @@ export const MODULES: readonly ModuleSpec[] = [
           },
         },
         note: (r) => (r.status === "requested" ? "Four-eyes rule: the approver must be different from the requester." : null),
-        create: {
-          label: "New stock transfer",
-          title: "New stock transfer",
-          description: "Moves stock between warehouses after approval. Nothing moves until it is dispatched.",
-          fields: [
-            { name: "from", label: "From warehouse", kind: "select", required: true, options: WAREHOUSES },
-            { name: "to", label: "To warehouse", kind: "select", required: true, options: WAREHOUSES },
-            { name: "units", label: "Units", kind: "number", required: true, min: 1 },
-          ],
-          validate: (v) => (v.from && v.from === v.to ? { to: "Choose a different destination warehouse." } : {}),
-          status: "requested",
-          toRow: (v) => ({ code: nextCode("TR", 1043, 4), from: v.from!, to: v.to!, lines: 1, units: Number(v.units), requestedBy: "You", date: today() }),
-          toast: () => "Transfer requested. Waiting for approval.",
-        },
         actions: [
           { key: "approve", label: "Approve", from: ["requested"], to: "approved", variant: "primary", toast: (r) => `${r.code} approved.` },
           { key: "dispatch", label: "Dispatch", from: ["approved"], to: "in_transit", variant: "primary", toast: (r) => `${r.code} dispatched. Stock ledger updated.` },
@@ -552,21 +434,6 @@ export const MODULES: readonly ModuleSpec[] = [
         ],
         recordName: (r) => `${r.code} · ${r.type}`,
         note: () => "Posted adjustments are permanent ledger entries. Mistakes are fixed with a new adjustment.",
-        create: {
-          label: "Request adjustment",
-          title: "Request stock adjustment",
-          description: "Damage, expiry or count corrections. A second person approves before it posts.",
-          fields: [
-            { name: "warehouse", label: "Warehouse", kind: "select", required: true, options: WAREHOUSES },
-            { name: "type", label: "Type", kind: "select", required: true, options: ["Damage", "Expiry write-off", "Count correction", "Return to vendor"] },
-            { name: "units", label: "Units (negative to remove)", kind: "number", required: true },
-            { name: "reason", label: "Reason", kind: "textarea", required: true },
-          ],
-          validate: (v) => (Number(v.units) === 0 ? { units: "Units can't be zero." } : {}),
-          status: "submitted",
-          toRow: (v) => ({ code: nextCode("ADJ", 311), warehouse: v.warehouse!, type: v.type!, units: Number(v.units), reason: v.reason!, requestedBy: "You" }),
-          toast: () => "Adjustment submitted for approval.",
-        },
         actions: [
           { key: "approve", label: "Approve & post", from: ["submitted"], to: "posted", variant: "primary", toast: (r) => `${r.code} posted to the stock ledger.` },
           {
@@ -636,19 +503,6 @@ export const MODULES: readonly ModuleSpec[] = [
           { label: "Members", key: "members", format: "count" },
         ],
         recordName: (r) => String(r.name),
-        create: {
-          label: "Add plan",
-          title: "Add Prime plan",
-          description: "Existing subscriptions keep the price they were bought at.",
-          fields: [
-            { name: "name", label: "Plan name", kind: "text", required: true },
-            { name: "price", label: "Price (₹)", kind: "money", required: true, min: 1 },
-            { name: "duration", label: "Duration (days)", kind: "number", required: true, min: 1 },
-          ],
-          status: "active",
-          toRow: (v) => ({ name: v.name!, price: rupeesToPaise(v.price!), duration: Number(v.duration), members: 0 }),
-          toast: (v) => `Plan "${v.name}" created.`,
-        },
         actions: [
           {
             key: "archive", label: "Archive plan", from: ["active"], to: "archived", variant: "danger",
@@ -786,22 +640,6 @@ export const MODULES: readonly ModuleSpec[] = [
         ],
         recordName: (r) => `${r.number} · ${r.buyer}`,
         note: (r) => (r.status === "generated" ? "An IRN can only be cancelled within 24 hours. After that, issue a credit note." : null),
-        create: {
-          label: "Create invoice",
-          title: "Create invoice",
-          description: "Numbers come from the FY series when the invoice is issued.",
-          fields: [
-            { name: "buyer", label: "Buyer", kind: "select", required: true, options: ACTIVE_DEALERS },
-            { name: "gstin", label: "Buyer GSTIN", kind: "text", uppercase: true, pattern: GSTIN, helper: "Leave empty for unregistered buyers." },
-            { name: "amount", label: "Amount incl. GST (₹)", kind: "money", required: true, min: 1 },
-          ],
-          status: "pending",
-          toRow: (v) => ({
-            number: nextCode("FX/26-27", 419, 6).replace("FX/26-27-", "FX/26-27/"),
-            buyer: v.buyer!, gstin: v.gstin || "—", amount: rupeesToPaise(v.amount!), issued: today(), einvoice: "Pending",
-          }),
-          toast: () => "Invoice issued. E-invoice queued.",
-        },
         actions: [
           { key: "retry", label: "Retry e-invoice", from: ["dead_letter", "retrying"], to: "pending", variant: "primary", toast: (r) => `E-invoice for ${r.number} re-queued.` },
           {
@@ -944,19 +782,6 @@ export const MODULES: readonly ModuleSpec[] = [
             const index = { queued: 0, processing: 1, completed: 3 } as Partial<Record<StatusKey, number>>;
             return steps(labels, index[r.status] ?? 0);
           },
-        },
-        create: {
-          label: "Request report",
-          title: "Request report",
-          description: "You'll get a notification when it's ready. Data is limited to your territory.",
-          fields: [
-            { name: "name", label: "Report", kind: "select", required: true, options: ["Sales by district", "GST sales register", "Dealer wallet statement", "Stock ledger", "Orders by channel", "Prime churn"] },
-            { name: "range", label: "Range", kind: "select", required: true, options: ["Last 7 days", "Last 30 days", "Last 90 days", "FY 2026-27 (to date)"] },
-            { name: "format", label: "Format", kind: "select", required: true, options: ["XLSX", "CSV"] },
-          ],
-          status: "queued",
-          toRow: (v) => ({ name: v.name!, range: v.range!, format: v.format!, requestedBy: "You", requested: now() }),
-          toast: (v) => `"${v.name}" queued. You'll be notified when it's ready.`,
         },
         actions: [
           { key: "download", label: "Download", from: ["completed"], variant: "primary", toast: (r) => `Download link for "${r.name}" created (valid 5 minutes).` },

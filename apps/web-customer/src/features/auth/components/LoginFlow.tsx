@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { apiMode } from "@femxo/shared";
 import { isApiError } from "@femxo/shared/api";
 import type { AuthApi } from "@femxo/shared/api";
 import { MobileNumber } from "@femxo/shared/contracts";
@@ -264,7 +263,6 @@ export function LoginFlow({ auth, mode = "login" }: { auth?: AuthApi; mode?: "lo
           </p>
         </div>
         <OtpInput key={codeKey} onChange={setCode} disabled={locked} />
-        {apiMode === "mock" ? <p className="text-xs text-ink-muted">Demo: use code 123456</p> : null}
         {errorBanner}
         <Button type="submit" size="lg" block busy={busy === "verify"} disabled={locked}>
           Verify and continue

@@ -1,24 +1,19 @@
 "use client";
 
-import { apiMode } from "@femxo/shared";
-import { createAddressApi, createAuthApi, createCartApi, createCheckoutApi, createPaymentApi, createHttpAdapter, createOrdersApi, createPrimeApi, createProductsApi, createSearchApi, createSupportApi, createWishlistApi, shareReads, withAuth } from "@femxo/shared/api";
+import { createAddressApi, createAuthApi, createCartApi, createCheckoutApi, createHttpAdapter, createOrdersApi, createPaymentApi, createPrimeApi, createProductsApi, createSearchApi, createStoreAdapter, createSupportApi, createWishlistApi, shareReads, withAuth } from "@femxo/shared/api";
 import type { ApiAdapter } from "@femxo/shared/api";
-import { loadMockRuntime } from "@/features/devtools/runtime";
 import { getAccessToken } from "./token";
 
 /*
- * The one place the storefront chooses its API: the in-browser mock or the
- * real backend (NEXT_PUBLIC_API_MODE). Features call these clients and never
- * know which they got.
+ * The one place the storefront builds its API clients, over femxo-backend. The browser calls
+ * same-origin paths that Next forwards (next.config.ts), so no CORS setup is needed.
  */
 
 let adapter: ApiAdapter | undefined;
 
 function authedAdapter() {
   if (!adapter) {
-    // The mock backend is built the first time a request is sent (see runtime.ts), not when this client is made.
-    const mock: ApiAdapter = { send: async (req) => (await loadMockRuntime())!.adapter.send(req) };
-    const base = apiMode === "mock" ? mock : createHttpAdapter({ baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "" });
+    const base = createStoreAdapter(createHttpAdapter({ baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "" }));
     // Identical reads made together (two components, or React running an effect twice in development) go out once.
     adapter = shareReads(withAuth(base, getAccessToken));
   }

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { z } from "zod";
 import { Button, Dialog, FormField, SelectInput, TextArea, TextInput, useToast } from "@/components/admin-ui";
-import { PartialSaveError, createRecord, isLive, updateRecord } from "../data/api";
+import { PartialSaveError, createRecord, updateRecord } from "../data/api";
 import type { DatasetKey, RecordRow } from "../data/records";
 import { ImagePicker } from "./ImagePicker";
 import type { CreateSpec, EditSpec, ExistingImage, FormFieldSpec, FormValues } from "./types";
@@ -165,8 +165,8 @@ function FormDialog({
       await save(trimmed, files, removed);
       close();
     } catch (error) {
-      // In live mode the API says why (e.g. "SKU already used"); the form keeps what was typed.
-      const reason = isLive && error instanceof Error && error.message ? `${error.message}. ` : "";
+      // The API says why (e.g. "SKU already used"); the form keeps what was typed.
+      const reason = error instanceof Error && error.message ? `${error.message}. ` : "";
       toast(`Couldn't save. ${reason}Your changes are still in the form.`, "error");
     } finally {
       setSaving(false);
@@ -309,7 +309,7 @@ export function CreateDialog({
       onClose={onClose}
       onSubmit={async (values, files) => {
         try {
-          const row = await createRecord(dataset, spec.toRow(values), spec.status, files);
+          const row = await createRecord(dataset, spec.toRow(values), files);
           toast(spec.toast(values));
           onCreated(row);
         } catch (error) {

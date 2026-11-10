@@ -7,12 +7,9 @@ import { BirthdayBanner } from "@/features/prime/components/BirthdayBanner";
 import { CartProvider } from "@/features/cart/components/CartProvider";
 import { WishlistProvider } from "@/features/wishlist/components/WishlistProvider";
 import { SessionProvider } from "@/features/auth/components/SessionProvider";
-import { DemoPanelHost } from "@/features/devtools/components/DemoPanelHost";
-import { BottomBar } from "@/features/shell/components/BottomBar";
-import { CategoryNav } from "@/features/shell/components/CategoryNav";
+import { BottomBarLoader, CategoryNavLoader } from "@/features/shell/components/NavLoaders";
 import { Footer } from "@/features/shell/components/Footer";
 import { Header } from "@/features/shell/components/Header";
-import { TOP_CATEGORIES } from "@/features/shell/categories";
 import "./globals.css";
 import { ICONS } from "./icons";
 import { t } from "@/i18n";
@@ -58,7 +55,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <Header />
                 {/* These read the current path. On pages whose address isn't known until the visit (an order, a support request) that has to wait, without holding up the rest of the page. */}
                 <Suspense fallback={null}>
-                  <CategoryNav categories={TOP_CATEGORIES} />
+                  <CategoryNavLoader />
                 </Suspense>
                 <OfflineBanner />
                 <BirthdayBanner />
@@ -67,9 +64,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </main>
                 <Footer />
                 <Suspense fallback={null}>
-                  <BottomBar categories={TOP_CATEGORIES} />
+                  <BottomBarLoader />
                 </Suspense>
-                <DemoPanelHost />
               </WishlistProvider>
             </CartProvider>
           </SessionProvider>

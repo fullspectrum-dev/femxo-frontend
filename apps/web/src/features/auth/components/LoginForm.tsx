@@ -1,18 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeyRound, Mail, UserPlus } from "lucide-react";
+import { Mail, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import type { z } from "zod";
-import { primaryRole } from "@/lib/roles";
-import { cn } from "@/lib/utils";
 import { loginSchema } from "../schemas/auth-schemas";
 import { AuthApiError } from "../services/auth-client";
-import type { DemoAccount } from "../services/demo-backend";
-import { isAuthDemoMode } from "../services/demo-mode";
 import { AuthField } from "./AuthField";
 import { FormAlert, SubmitButton, deadlineIn, formatWait, useCountdown } from "./AuthFormParts";
 import { safeNextPath, useAuthSession } from "./AuthSessionProvider";
@@ -27,7 +23,6 @@ export function LoginForm() {
   const { status, user, signIn } = useAuthSession();
   const [serverError, setServerError] = useState("");
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
-  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
   const waitSeconds = useCountdown(lockedUntil);
   const nextParam = searchParams.get("next");
 
@@ -36,7 +31,6 @@ export function LoginForm() {
     mode: "onTouched",
     defaultValues: { email: "", password: "" },
   });
-  const selectedEmail = useWatch({ control: form.control, name: "email" });
 
   // Someone already signed in doesn't need this page. Without a `next`, the
   // Super Admin goes to the admin panel; other roles to their workspace page.
@@ -48,17 +42,6 @@ export function LoginForm() {
     const requested = nextParam === "/account" ? null : nextParam;
     router.replace(user.mustChangePassword ? "/change-password" : safeNextPath(requested, home));
   }, [status, user, nextParam, router]);
-
-  useEffect(() => {
-    if (!isAuthDemoMode) return;
-    let active = true;
-    void import("@/features/auth/services/demo-backend").then(({ DEMO_ACCOUNTS }) => {
-      if (active) setDemoAccounts(DEMO_ACCOUNTS);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   async function onSubmit(values: LoginOutput) {
     setServerError("");
@@ -77,44 +60,6 @@ export function LoginForm() {
 
   return (
     <div className="space-y-6">
-      {demoAccounts.length > 0 && (
-        <div aria-label="Demo accounts" role="group">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Try a demo account
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {demoAccounts.map((account) => {
-              const Icon = primaryRole(account.label === "Super Admin", [account.label])?.icon ?? KeyRound;
-              const isSelected = selectedEmail === account.email;
-              return (
-                <button
-                  key={account.email}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => {
-                    form.setValue("email", account.email, { shouldValidate: true });
-                    form.setValue("password", account.password, { shouldValidate: true });
-                    setServerError("");
-                  }}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors",
-                    isSelected
-                      ? "border-gold-400 bg-gold-400/15"
-                      : "border-border bg-card hover:border-primary/60 hover:bg-secondary/60"
-                  )}
-                >
-                  <Icon size={16} aria-hidden="true" className="shrink-0 text-highlight" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-foreground">{account.label}</span>
-                    <span className="block truncate text-[11px] text-muted-foreground">{account.hint}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <form className="space-y-5" noValidate onSubmit={form.handleSubmit(onSubmit)}>
         {serverError && (
           <FormAlert>

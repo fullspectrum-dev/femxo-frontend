@@ -1,14 +1,11 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  AccessDenied,
   Badge,
   Button,
-  Card,
   ComingSoon,
   ConfirmActionDialog,
   DataTable,
@@ -19,8 +16,8 @@ import {
   useToast,
 } from "@/components/admin-ui";
 import type { Column, SortState } from "@/components/admin-ui";
-import { MockApiError, applyAction, forMode, hasBackend, isLive, listRecords, readPreviewState } from "../data/api";
-import type { Page, PreviewState } from "../data/api";
+import { ApiRefusal, applyAction, forMode, hasBackend, listRecords } from "../data/api";
+import type { Page } from "../data/api";
 import type { RecordRow } from "../data/records";
 import { CreateDialog, EditDialog } from "./CreateDialog";
 import { DetailDrawer } from "./DetailDrawer";
@@ -41,7 +38,6 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
   // mounted but hidden and they see the current URL too, so only the module
   // being shown may act on it.
   const isShown = pathname === `/admin/${spec.key}`;
-  const preview = readPreviewState(searchParams);
   const views = useMemo(() => spec.views.map(forMode), [spec]);
   const createView = views.find((entry) => entry.create);
   const createFromUrl = isShown && searchParams.get("create") === "1" && createView !== undefined;
@@ -60,23 +56,6 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
     params.delete("create");
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }
-
-  if (preview === "denied") {
-    return (
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <PageHeader title={spec.title} description={spec.description} />
-        <Card>
-          <AccessDenied
-            action={
-              <Link href="/admin/dashboard" className="fx-btn fx-btn--secondary">
-                Back to dashboard
-              </Link>
-            }
-          />
-        </Card>
-      </div>
-    );
   }
 
   // One minmax(0, 1fr) column, so a wide table scrolls inside its card instead
@@ -122,7 +101,6 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
           <ViewPanel
             key={view.key}
             view={view}
-            preview={preview}
             createOpen={createOpen}
             onCreateClose={closeCreate}
             onCreateOpen={() => setCreateOpen(true)}
@@ -143,13 +121,11 @@ interface Query {
 
 function ViewPanel({
   view,
-  preview,
   createOpen,
   onCreateOpen,
   onCreateClose,
 }: {
   view: ViewSpec;
-  preview: PreviewState;
   createOpen: boolean;
   onCreateOpen: () => void;
   onCreateClose: () => void;
@@ -185,8 +161,7 @@ function ViewPanel({
     let active = true;
     listRecords(
       view.dataset,
-      { q: query.q, searchKeys: view.searchKeys, status: query.status || undefined, sort: query.sort, cursor, limit: pageSize },
-      preview
+      { q: query.q, status: query.status || undefined, cursor, limit: pageSize }
     )
       .then((page) => {
         if (!active) return;
@@ -198,7 +173,7 @@ function ViewPanel({
     return () => {
       active = false;
     };
-  }, [requestKey, view, query, cursor, pageSize, preview]);
+  }, [requestKey, view, query, cursor, pageSize]);
 
   const columns = useMemo<Column<RecordRow>[]>(
     () =>
@@ -214,25 +189,23 @@ function ViewPanel({
     [view]
   );
 
-  async function run(action: ActionSpec, row: RecordRow) {
+  async function run(action: ActionSpec, row: RecordRow, reason?: string) {
     setPending(null);
-    if (!action.to) {
-      toast(action.toast(row));
-      return;
-    }
     setBusy(true);
     try {
-      const updated = await applyAction(view.dataset, row, action);
+      const updated = await applyAction(view.dataset, row, action, reason);
       setSelected(updated);
       setReload((n) => n + 1);
       toast(action.toast(updated));
     } catch (error) {
       toast(
-        error instanceof MockApiError && error.code === "INVALID_TRANSITION"
-          ? isLive && error.message
-            ? `${error.message}. Nothing was changed.`
+        error instanceof ApiRefusal && error.code === "INVALID_TRANSITION"
+          ? error.message
+            ? `${error.message.replace(/\.$/, "")}. Nothing was changed.`
             : "This record changed meanwhile. Refreshed with the latest state."
-          : "Couldn't apply the action. Nothing was changed.",
+          : error instanceof ApiRefusal && error.code === "FORBIDDEN" && error.message
+            ? `${error.message.replace(/\.$/, "")}. Nothing was changed.`
+            : "Couldn't apply the action. Nothing was changed.",
         "error"
       );
       setReload((n) => n + 1);
@@ -338,8 +311,9 @@ function ViewPanel({
           amount={amountOf(pending.row, pending.action.confirm.amountKey)}
           record={view.recordName(pending.row)}
           confirmLabel={pending.action.confirm.confirmLabel}
+          reason={pending.action.confirm.reason}
           onClose={() => setPending(null)}
-          onConfirm={() => void run(pending.action, pending.row)}
+          onConfirm={(reason) => void run(pending.action, pending.row, reason)}
         />
       ) : null}
 

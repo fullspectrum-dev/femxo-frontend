@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
     // AVIF first, WebP fallback (performance gate).
     formats: ["image/avif", "image/webp"],
   },
+  // The browser asks for /store/v1/... on this site; Next forwards it to femxo-backend.
+  async rewrites() {
+    const origin = (process.env.FEMXO_API_ORIGIN ?? "http://localhost:3000").replace(/\/$/, "");
+    return [{ source: "/store/v1/:path*", destination: `${origin}/store/v1/:path*` }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

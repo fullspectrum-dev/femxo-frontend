@@ -49,6 +49,8 @@ export const en = {
   "banners.prev": "Previous offer",
   "banners.next": "Next offer",
   "banners.goTo": "Show offer {n}",
+  "home.unavailable.title": "The store is taking a break",
+  "home.unavailable.message": "We couldn't load the catalog just now. Please try again in a moment.",
   "home.deals": "Today's deals",
   "home.primePicks": "Prime picks",
   "home.primeStrip.title": "Femxo Prime",

@@ -9,9 +9,8 @@ import { toggleTheme, useIsDarkTheme } from "@/components/layout/ThemeToggle";
 import type { AuthUser } from "@/features/auth";
 import type { AccessSummary } from "@/features/auth/types/auth";
 import { useAuthSession } from "@/features/auth";
+import type { StatusKey } from "@/components/admin-ui";
 import { forMode, hasBackend } from "../data/api";
-import { QUICK_LINKS } from "../data/dashboard";
-import { isAdminPrototype } from "../data/data-mode";
 import { initials } from "../format";
 import { MODULES } from "../modules/registry";
 import { findNav } from "../nav";
@@ -19,14 +18,8 @@ import { CommandSearch } from "./CommandSearch";
 import { Popover } from "./Popover";
 import { describeAccess } from "./useAccessSummary";
 
-const BELL_ITEMS = [
-  { title: "SMS gateway · OTP queue", meta: "3 retries exhausted", status: "dead_letter", href: "/admin/integrations" },
-  { title: "Kosi Distribution Co.", meta: "Dealer KYC waiting for review", status: "in_review", href: "/admin/dealers" },
-  { title: "Edible oil 1 L", meta: "Patna WH · 18 units left", status: "low_stock", href: "/admin/warehouse" },
-] as const;
-
-// Live mode: only the create forms the API supports (taken from the module registry), never a canned list.
-const LIVE_QUICK_LINKS = MODULES.flatMap((module) =>
+// Only the create forms the API supports (taken from the module registry), never a canned list.
+const QUICK_LINKS = MODULES.flatMap((module) =>
   module.views.flatMap((view) => {
     const create = hasBackend(view.dataset) ? forMode(view).create : undefined;
     return create ? [{ label: create.label, href: `/admin/${module.key}?create=1` }] : [];
@@ -34,9 +27,9 @@ const LIVE_QUICK_LINKS = MODULES.flatMap((module) =>
 );
 
 export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; access: AccessSummary | null; onMenu: () => void; menuLabel: string }) {
-  // Notifications have no API yet: live mode shows none rather than the prototype's sample alerts.
-  const bellItems = isAdminPrototype ? BELL_ITEMS : [];
-  const quickLinks = isAdminPrototype ? QUICK_LINKS : LIVE_QUICK_LINKS;
+  // Notifications have no staff-facing API yet, so there are no alerts to show.
+  const bellItems: readonly { title: string; meta: string; status: StatusKey; href: string }[] = [];
+  const quickLinks = QUICK_LINKS;
   const who = describeAccess(access);
   const pathname = usePathname();
   const isDark = useIsDarkTheme();
@@ -58,7 +51,7 @@ export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; ac
         {/* Phone: brand + role, as on the Mobile 390 canvas */}
         <div className="min-w-0 flex-1 md:hidden">
           <p className="fx-display text-[19px] font-bold leading-tight">Femxo</p>
-          <p className="truncate text-[12px] fx-muted">{who.role}{isAdminPrototype ? " · Staging" : ""}</p>
+          <p className="truncate text-[12px] fx-muted">{who.role}</p>
         </div>
 
         <nav aria-label="Breadcrumb" className="hidden min-w-0 lg:block">
@@ -82,8 +75,6 @@ export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; ac
         <div className="hidden min-w-40 flex-1 md:block">
           <CommandSearch />
         </div>
-
-        {isAdminPrototype ? <span className="fx-env-pill hidden min-[1600px]:inline-flex">Staging · Prototype data</span> : null}
 
         <button
           type="button"
@@ -170,15 +161,6 @@ export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; ac
                 <p className="flex items-center justify-between">
                   Collapse / expand sidebar <kbd className="fx-kbd">Ctrl / ⌘ B</kbd>
                 </p>
-                {isAdminPrototype ? (
-                  <>
-                    <p className="fx-label mt-1">Prototype</p>
-                    <p className="fx-muted">
-                      Add <code>?state=loading</code>, <code>empty</code>, <code>error</code> or <code>denied</code> to any module URL to
-                      preview that state.
-                    </p>
-                  </>
-                ) : null}
               </div>
             )}
           </Popover>
