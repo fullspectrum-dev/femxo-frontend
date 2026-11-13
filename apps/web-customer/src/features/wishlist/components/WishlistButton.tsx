@@ -19,7 +19,7 @@ export function WishlistButton({ product, className }: { product: ProductSummary
       disabled={!ready}
       onClick={() => void toggle(product)}
       className={cn(
-        "grid size-10 place-items-center rounded-full bg-surface/90 shadow-card backdrop-blur transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-60 motion-reduce:transition-none motion-reduce:hover:scale-100",
+        "grid size-11 cursor-pointer place-items-center rounded-full bg-surface/90 backdrop-blur transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-60 motion-reduce:transition-none motion-reduce:hover:scale-100",
         saved ? "text-danger" : "text-ink-muted hover:text-danger",
         className
       )}

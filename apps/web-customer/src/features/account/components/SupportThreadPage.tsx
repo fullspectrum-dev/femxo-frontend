@@ -99,7 +99,7 @@ function Thread({ id, support }: { id: string; support?: SupportApi }) {
       <ol aria-label="Conversation" className="grid gap-3">
         {ticket.messages.map((message) => (
           <li key={message.id} className={message.from === "customer" ? "justify-self-end" : "justify-self-start"}>
-            <div className={message.from === "customer" ? "max-w-prose rounded-card bg-primary-soft p-3 text-sm" : "max-w-prose rounded-card border border-line bg-surface p-3 text-sm shadow-card"}>
+            <div className={message.from === "customer" ? "max-w-prose rounded-card bg-primary-soft p-3 text-sm" : "max-w-prose rounded-card border border-line bg-surface p-3 text-sm"}>
               <p className="mb-1 text-xs font-semibold text-ink-muted">
                 {message.from === "customer" ? "You" : "Femxo support"} · <time dateTime={message.at}>{WHEN.format(new Date(message.at))}</time>
               </p>

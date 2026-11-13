@@ -34,6 +34,7 @@ export const ApiErrorCode = z.enum([
   "RATE_LIMITED", // 429 + Retry-After (OTP lockout, resend)
   "PAYMENT_FAILED", // 402
   "INTERNAL", // 500
+  "NOT_AVAILABLE", // 503: a feature the backend does not offer yet (not an outage)
 ]);
 export type ApiErrorCode = z.infer<typeof ApiErrorCode>;
 

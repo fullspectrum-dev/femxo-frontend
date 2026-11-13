@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { NAV_ITEMS } from "../nav";
+import { usePanel } from "./PanelContext";
 
 /**
  * "Search modules, dealers, orders…" with ⌘K / Ctrl+K. In the prototype it
@@ -12,6 +12,7 @@ import { NAV_ITEMS } from "../nav";
  */
 export function CommandSearch({ autoFocus }: { autoFocus?: boolean }) {
   const router = useRouter();
+  const { items: NAV_ITEMS, to } = usePanel();
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const [query, setQuery] = useState("");
@@ -38,7 +39,7 @@ export function CommandSearch({ autoFocus }: { autoFocus?: boolean }) {
     setQuery("");
     setOpen(false);
     inputRef.current?.blur();
-    router.push(target.href);
+    router.push(to(target.href));
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {

@@ -51,6 +51,8 @@ export const ProductSummary = z.object({
   /** The variant whose price is shown ("from"): what a card's quick-add puts in the cart. */
   variantId: z.string(),
   variantCount: z.number().int().positive(),
+  /** The shown variant's pack size ("1 kg", "500 ml"), printed under the name on cards. */
+  packLabel: z.string().optional(),
   fromPrimePrice: Paise,
   mrp: Paise,
   inStock: z.boolean(),

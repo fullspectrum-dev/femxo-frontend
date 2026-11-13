@@ -45,7 +45,7 @@ function Welcome() {
         <ul className="grid gap-3 sm:grid-cols-2">
           {SECTIONS.map((section) => (
             <li key={section.href}>
-              <Link href={section.href} className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 shadow-card transition-shadow hover:shadow-raised focus-visible:outline-2 focus-visible:outline-focus">
+              <Link href={section.href} className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 transition-colors duration-150 hover:border-primary focus-visible:outline-2 focus-visible:outline-focus">
                 <span className="grid size-11 flex-none place-items-center rounded-full bg-primary-soft text-primary">{section.icon}</span>
                 <span>
                   <span className="block font-semibold">{section.label}</span>

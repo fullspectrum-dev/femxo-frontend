@@ -26,7 +26,7 @@ export interface DetailSpec {
 export interface FormFieldSpec {
   name: string;
   label: string;
-  kind: "text" | "email" | "tel" | "number" | "money" | "select" | "textarea" | "images";
+  kind: "text" | "email" | "tel" | "password" | "number" | "money" | "select" | "textarea" | "images";
   required?: boolean;
   placeholder?: string;
   helper?: string;

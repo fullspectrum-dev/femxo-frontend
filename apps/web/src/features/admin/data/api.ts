@@ -11,6 +11,9 @@ import { rolesService } from "../services/roles.service";
 import { transfersService } from "../services/transfers.service";
 import type { LiveService } from "../services/types";
 import { usersService } from "../services/users.service";
+import { approvalsService } from "../services/approvals.service";
+import { codTasksService, returnsService, routesService } from "../services/logistics.service";
+import { brandsService, categoriesService, commissionService, warehousesService } from "../services/setup.service";
 import { ApiRefusal } from "./errors";
 import type { ListQuery, Page } from "./errors";
 import type { Cell, DatasetKey, RecordRow } from "./records";
@@ -44,6 +47,14 @@ const SERVICES: Partial<Record<DatasetKey, LiveService>> = {
   reports: reportsService,
   templates: templatesService,
   deadLetters: deadLettersService,
+  approvals: approvalsService,
+  returns: returnsService,
+  deliveryRoutes: routesService,
+  codTasks: codTasksService,
+  commissionPlans: commissionService,
+  warehouses: warehousesService,
+  brands: brandsService,
+  categories: categoriesService,
 };
 
 /** Whether the view has a backend route. */
@@ -74,7 +85,7 @@ export function forMode(view: ViewSpec): ViewSpec {
             ...action,
             label: override.label ?? action.label,
             toast: override.toast ?? action.toast,
-            confirm: action.confirm && override.confirm ? { ...action.confirm, ...override.confirm } : action.confirm,
+            confirm: override.confirm ? { kind: "destructive" as const, ...action.confirm, ...override.confirm } : action.confirm,
           };
         }),
     };

@@ -6,15 +6,15 @@ export type ButtonVariant = "primary" | "gold" | "secondary" | "ghost" | "danger
 export type ButtonSize = "sm" | "md" | "lg";
 
 const BASE =
-  "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-control font-semibold transition-[transform,box-shadow,background-color,filter] duration-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:translate-y-0.5 active:shadow-none disabled:cursor-not-allowed disabled:opacity-60 disabled:active:translate-y-0";
+  "inline-flex cursor-pointer touch-manipulation select-none items-center justify-center gap-2 whitespace-nowrap rounded-control font-display font-semibold transition-[transform,background-color,border-color,color,filter] duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 motion-reduce:transition-none motion-reduce:active:scale-100";
 
-// The Femxo "3D key": a solid shelf under the button that it presses into.
+// Flat, block colour: the press is a quick scale, not a shadow.
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-primary text-on-primary shadow-key hover:bg-primary-hover",
-  gold: "bg-gold text-on-gold shadow-key-gold hover:brightness-95",
-  secondary: "border border-line-input bg-surface text-ink shadow-key-neutral hover:bg-surface-sunken",
-  ghost: "text-ink hover:bg-surface-sunken active:translate-y-0",
-  danger: "bg-danger text-on-primary shadow-[0_3px_0_0_#7a170f] hover:brightness-95",
+  primary: "bg-primary text-on-primary hover:bg-primary-hover",
+  gold: "bg-gold text-on-gold hover:brightness-95",
+  secondary: "border-2 border-line bg-surface text-ink hover:border-primary hover:text-primary",
+  ghost: "text-ink hover:bg-surface-sunken active:scale-100",
+  danger: "bg-danger text-white hover:brightness-95",
 };
 
 // md and lg meet the 44px touch target.

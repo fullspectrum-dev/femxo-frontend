@@ -7,7 +7,7 @@ const DATE = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", 
 /** The member's card: who, which plan, how long, and a QR code carrying the member number. */
 export function MembershipCard({ membership, name }: { membership: Membership; name: string }) {
   return (
-    <section aria-label="Your Prime membership" className="overflow-hidden rounded-card bg-linear-to-br from-primary-deep via-primary to-primary-hover p-5 text-white shadow-raised">
+    <section aria-label="Your Prime membership" className="overflow-hidden rounded-card bg-linear-to-br from-primary-deep via-brand to-brand-hover p-5 text-white">
       <div className="flex flex-wrap items-center justify-between gap-5">
         <div className="grid gap-3">
           <p className="inline-flex items-center gap-2 font-display text-lg font-bold">

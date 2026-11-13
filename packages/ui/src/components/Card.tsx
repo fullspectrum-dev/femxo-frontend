@@ -3,7 +3,7 @@ import { cn } from "../cn";
 
 type CardElement = "div" | "section" | "article" | "li" | "aside";
 
-/** White surface with soft elevation: product cards, panels, order rows. */
+/** White block on the page: product cards, panels, order rows. Flat: a hairline edge, no lift. */
 export function Card({
   as: Element = "div",
   padded = true,

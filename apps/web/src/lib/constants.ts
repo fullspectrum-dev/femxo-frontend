@@ -57,21 +57,6 @@ export const CAPABILITIES = [
 ] as const;
 
 /**
- * Bihar's government tree, as the backend imports it from the Local
- * Government Directory (State → District → Sub-division → Block / Urban body
- * → Gram Panchayat → Village). Divisions are a sales grouping, not a
- * government level. Counts are rounded.
- */
-export const BIHAR_LEVELS = [
-  { value: "9", label: "Divisions" },
-  { value: "38", label: "Districts" },
-  { value: "101", label: "Sub-divisions" },
-  { value: "534", label: "Blocks" },
-  { value: "8,000+", label: "Gram panchayats" },
-  { value: "40,000+", label: "Villages" },
-] as const;
-
-/**
  * The entrepreneur model: one dealer per gram panchayat, two sub-dealers per
  * village, one urban dealer per municipal ward. Panchayats: 8,072 contested
  * in the 2021 Bihar panchayat elections (CAG audit report, 2023). Villages:

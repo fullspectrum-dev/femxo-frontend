@@ -15,6 +15,7 @@ export function Price({
   primePrice,
   member = false,
   size = "md",
+  hideDiscount = false,
   className,
 }: {
   price: number;
@@ -22,6 +23,8 @@ export function Price({
   primePrice?: number;
   member?: boolean;
   size?: keyof typeof SIZES;
+  /** When the saving is already shown elsewhere (a product card's "% OFF" badge). */
+  hideDiscount?: boolean;
   className?: string;
 }) {
   const hasPrime = primePrice !== undefined && primePrice < price;
@@ -31,14 +34,14 @@ export function Price({
   return (
     <div className={cn("flex flex-col gap-0.5", className)}>
       <p className="flex flex-wrap items-baseline gap-x-2">
-        <span className={cn("font-bold tracking-tight text-ink", SIZES[size])}>{formatINR(charged)}</span>
+        <span className={cn("font-display font-bold tracking-tight text-ink tabular-nums", SIZES[size])}>{formatINR(charged)}</span>
         {mrp && mrp > charged ? (
           <del className="text-sm text-ink-muted">
             <span className="sr-only">MRP </span>
             <span>{formatINR(mrp)}</span>
           </del>
         ) : null}
-        {off > 0 ? <span className="text-sm font-semibold text-success">{off}% off</span> : null}
+        {off > 0 && !hideDiscount ? <span className="text-sm font-semibold text-success">{off}% off</span> : null}
       </p>
       {hasPrime ? (
         member ? (

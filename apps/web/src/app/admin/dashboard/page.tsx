@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { LiveDashboard } from "@/features/admin/dashboard/LiveDashboard";
+import { CommandCenter } from "@/features/admin/dashboard/CommandCenter";
 
 // Rendered after the in-browser session check; see ../layout.tsx.
 export const instant = false;
 
-export const metadata: Metadata = { title: "Dashboard" };
+export const metadata: Metadata = { title: "Command center" };
 
 export default function DashboardPage() {
-  return <LiveDashboard />;
+  return <CommandCenter />;
 }

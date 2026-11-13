@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { NAV_GROUPS } from "../nav";
+import { usePanel } from "./PanelContext";
 import type { AccessSummary } from "@/features/auth/types/auth";
 import { useNavBadges } from "./useNavBadges";
 import { describeAccess } from "./useAccessSummary";
@@ -30,13 +30,14 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const badges = useNavBadges(pathname);
+  const { groups, panel, to } = usePanel();
   const who = describeAccess(access);
   const ToggleIcon = toggle?.expand ? ChevronsRight : ChevronsLeft;
 
   return (
     <div className="fx-sidebar flex h-full flex-col" data-rail={rail}>
       <Link
-        href="/admin/dashboard"
+        href={to("/admin/dashboard")}
         className={cn("flex flex-none items-center gap-3 pb-2 pt-6", rail ? "justify-center px-2" : "px-6")}
         title={rail ? "Femxo · Dashboard" : undefined}
         onClick={onNavigate}
@@ -47,7 +48,7 @@ export function Sidebar({
         ) : (
           <span className="leading-none">
             <span className="fx-display block text-[22px] font-bold text-white">Femxo</span>
-            <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{who.role}</span>
+            <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{panel.name} panel</span>
           </span>
         )}
       </Link>
@@ -69,19 +70,20 @@ export function Sidebar({
           </div>
         )}
 
-        <nav aria-label="Admin modules" className="mt-2">
-          {NAV_GROUPS.map((group) => (
+        <nav aria-label={`${panel.name} modules`} className="mt-2">
+          {groups.map((group) => (
             <div key={group.label}>
               <p className="fx-nav-group">{group.label}</p>
               <ul className="grid gap-0.5">
                 {group.items.map((item) => {
-                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const href = to(item.href);
+                  const active = pathname === href || pathname.startsWith(`${href}/`);
                   const Icon = item.icon;
                   const badge = badges[item.key];
                   return (
                     <li key={item.key}>
                       <Link
-                        href={item.href}
+                        href={href}
                         className="fx-nav-link"
                         aria-current={active ? "page" : undefined}
                         title={rail ? (badge ? `${item.label} · ${badge} waiting` : item.label) : undefined}

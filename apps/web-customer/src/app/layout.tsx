@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Nunito_Sans, Rubik } from "next/font/google";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { OfflineBanner, ToastProvider, themeInitScript } from "@femxo/ui";
 import { BirthdayBanner } from "@/features/prime/components/BirthdayBanner";
+import { CartBar } from "@/features/cart/components/CartBar";
 import { CartProvider } from "@/features/cart/components/CartProvider";
 import { WishlistProvider } from "@/features/wishlist/components/WishlistProvider";
 import { SessionProvider } from "@/features/auth/components/SessionProvider";
@@ -14,8 +15,9 @@ import "./globals.css";
 import { ICONS } from "./icons";
 import { t } from "@/i18n";
 
-const display = Space_Grotesk({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-space-grotesk", display: "swap" });
-const body = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+// The ui-ux-pro-max e-commerce pairing: Rubik for headings and prices, Nunito Sans for reading.
+const display = Rubik({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-rubik", display: "swap" });
+const body = Nunito_Sans({ subsets: ["latin"], variable: "--font-nunito", display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "Femxo", template: "%s | Femxo" },
@@ -64,6 +66,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 </main>
                 <Footer />
                 <Suspense fallback={null}>
+                  <CartBar />
                   <BottomBarLoader />
                 </Suspense>
               </WishlistProvider>

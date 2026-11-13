@@ -23,6 +23,7 @@ import { CreateDialog, EditDialog } from "./CreateDialog";
 import { DetailDrawer } from "./DetailDrawer";
 import { renderColumn } from "./cells";
 import { amountOf, getModule } from "./registry";
+import { usePanel } from "../shell/PanelContext";
 import type { ActionSpec, ModuleSpec, ViewSpec } from "./types";
 
 const DEFAULT_PAGE_SIZE = 6;
@@ -33,11 +34,12 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { to } = usePanel();
   // Read from the router (not once on mount), so a Quick action link to
   // ?create=1 works while already on this module. Next keeps visited modules
   // mounted but hidden and they see the current URL too, so only the module
   // being shown may act on it.
-  const isShown = pathname === `/admin/${spec.key}`;
+  const isShown = pathname === to(`/admin/${spec.key}`);
   const views = useMemo(() => spec.views.map(forMode), [spec]);
   const createView = views.find((entry) => entry.create);
   const createFromUrl = isShown && searchParams.get("create") === "1" && createView !== undefined;

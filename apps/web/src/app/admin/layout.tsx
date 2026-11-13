@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import "@/components/admin-ui/admin.css";
+import "@/components/admin-ui/ops.css";
 import { AuthSessionProvider } from "@/features/auth";
 import { AdminGate } from "@/features/admin/shell/AdminGate";
 

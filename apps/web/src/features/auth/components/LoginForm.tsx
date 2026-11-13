@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import { loginSchema } from "../schemas/auth-schemas";
+import { homeFor } from "@/features/admin/panels";
+import { authApi } from "../services/auth-api";
 import { AuthApiError } from "../services/auth-client";
 import { AuthField } from "./AuthField";
 import { FormAlert, SubmitButton, deadlineIn, formatWait, useCountdown } from "./AuthFormParts";
@@ -38,9 +40,21 @@ export function LoginForm() {
   // RequireSession sends people back to, not a page they picked.
   useEffect(() => {
     if (status !== "signed-in" || !user) return;
-    const home = user.isSuperAdmin ? "/admin/dashboard" : "/account";
+    let cancelled = false;
     const requested = nextParam === "/account" ? null : nextParam;
-    router.replace(user.mustChangePassword ? "/change-password" : safeNextPath(requested, home));
+    const go = (home: string) => {
+      if (!cancelled) router.replace(user.mustChangePassword ? "/change-password" : safeNextPath(requested, home));
+    };
+    if (user.isSuperAdmin) go("/admin/dashboard");
+    else
+      // Other roles land on their own panel (features/admin/panels.ts), or the account page when none fits.
+      authApi
+        .access()
+        .then((access) => go(homeFor(access) ?? "/account"))
+        .catch(() => go("/account"));
+    return () => {
+      cancelled = true;
+    };
   }, [status, user, nextParam, router]);
 
   async function onSubmit(values: LoginOutput) {

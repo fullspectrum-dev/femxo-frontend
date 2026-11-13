@@ -22,7 +22,7 @@ export function CartLink({ className }: { className?: string }) {
         {t("shell.header.cart")}
       </span>
       {count > 0 ? (
-        <span aria-hidden="true" className="absolute right-0.5 top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-on-primary">
+        <span aria-hidden="true" className="absolute right-0.5 top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-gold px-1 text-[11px] font-bold text-on-gold motion-safe:animate-pop">
           {count}
         </span>
       ) : null}

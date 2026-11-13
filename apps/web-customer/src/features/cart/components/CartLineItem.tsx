@@ -33,7 +33,7 @@ export function CartLineItem({ line }: { line: CartLine }) {
   return (
     <li aria-label={name} className="grid grid-cols-[5rem_1fr] gap-3 border-b border-line py-4 last:border-b-0 sm:grid-cols-[6rem_1fr]">
       <Link href={`/p/${line.product.slug}`} tabIndex={-1} aria-hidden="true" className="relative block aspect-square overflow-hidden rounded-control bg-surface-sunken focus-visible:outline-2 focus-visible:outline-focus">
-        <Image src={line.product.image} alt="" fill sizes="96px" className="object-cover" />
+        <Image src={line.product.image} alt="" fill sizes="96px" className="object-contain p-1.5" />
       </Link>
       <div className="grid content-start gap-2">
         <div className="flex items-start justify-between gap-2">

@@ -66,7 +66,7 @@ export function toggleTheme() {
   window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string } = {}) {
   const isDark = useIsDarkTheme();
 
   return (
@@ -76,7 +76,7 @@ export function ThemeToggle() {
       aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
       aria-pressed={isDark}
       title={`Switch to ${isDark ? "light" : "dark"} mode`}
-      className="flex size-11 shrink-0 items-center justify-center rounded-control text-ink transition-colors hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-focus"
+      className={className ?? "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-control text-ink transition-colors hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-focus"}
     >
       {isDark ? (
         <Sun aria-hidden="true" className="size-[18px]" />

@@ -44,7 +44,7 @@ function ProfileForm({ auth }: { auth?: AuthApi }) {
   }
 
   return (
-    <form onSubmit={submit} noValidate aria-label="Profile" className="grid gap-4 rounded-card border border-line bg-surface p-4 shadow-card md:p-5">
+    <form onSubmit={submit} noValidate aria-label="Profile" className="grid gap-4 rounded-card border border-line bg-surface p-4 md:p-5">
       <TextField label="Full name" autoComplete="name" value={values.name} error={errors.name} onChange={(e) => setValues({ ...values, name: e.target.value })} />
       <TextField label="Mobile number" value={`+91 ${user?.mobile ?? ""}`} readOnly hint="Your mobile number is how you sign in, so it can't be changed here." />
       <TextField label="Email" optional type="email" autoComplete="email" value={values.email} error={errors.email} onChange={(e) => setValues({ ...values, email: e.target.value })} />

@@ -251,7 +251,7 @@ function FormDialog({
                   <TextInput
                     {...common}
                     {...aria}
-                    type={field.kind === "email" ? "email" : field.kind === "tel" ? "tel" : "text"}
+                    type={field.kind === "email" ? "email" : field.kind === "tel" ? "tel" : field.kind === "password" ? "password" : "text"}
                     inputMode={
                       // The numeric keypad has no minus sign, so signed fields keep the full keyboard.
                       field.kind === "number" && field.min !== undefined && field.min >= 0
@@ -262,7 +262,7 @@ function FormDialog({
                             ? "tel"
                             : undefined
                     }
-                    autoComplete="off"
+                    autoComplete={field.kind === "password" ? "new-password" : "off"}
                     onChange={(event) => setValue(event.target.value)}
                   />
                 );

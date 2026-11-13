@@ -1,5 +1,6 @@
 import type { ApiAdapter, ApiRequest, ApiResponse } from "../../api/adapter";
-import type { Brand, Category, ProductDetail, ProductSummary } from "../../contracts/catalog";
+import type { Banner, Brand, Category, ProductDetail, ProductSummary } from "../../contracts/catalog";
+import { packArtUrl } from "../../lib/pack-art";
 
 /*
  * The storefront's adapter for femxo-backend. The backend publishes an identity-free catalog under
@@ -16,6 +17,8 @@ interface StoreCategory {
   id: string;
   name: string;
   slug: string;
+  /** Null until the admin uploads a picture; a URL string or an image set, depending on the backend version. */
+  image?: string | { urls?: { small?: string; medium?: string } } | null;
   hasChildren: boolean;
 }
 interface StoreBrand {
@@ -44,7 +47,32 @@ interface StoreProduct {
   images: { id: string; alt: string; urls: { small: string; medium: string; large: string } }[];
 }
 
-const PLACEHOLDER_IMAGE = "/images/product-placeholder.svg";
+/*
+ * Pictures until admin uploads arrive. A product's own photo always wins; then a
+ * storefront photo whose brand AND name match exactly; then drawn pack art with
+ * the product's real name and brand. Never a picture of another brand's pack.
+ */
+const STORE_PHOTOS = new Set(["femxo-select-instant-coffee", "femxo-select-cow-ghee"]);
+const slugOf = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+function fallbackImage(p: StoreProduct, brandName: string): string {
+  const key = `${slugOf(brandName)}-${p.slug}`;
+  if (STORE_PHOTOS.has(key)) return `/products/${key}.webp`;
+  return packArtUrl({ name: p.name, brand: brandName, toneKey: p.categoryPath[0] ?? p.categoryId });
+}
+
+/** Offers shown while the backend has no banners of its own: flat Femxo artwork, claims the store can stand behind. */
+const STORE_BANNERS: Banner[] = [
+  { id: "store-staples", title: "Kitchen staples", subtitle: "Atta, rice, dal and oil at everyday low prices", image: "/banners/staples.webp", href: "/c/staples" },
+  { id: "store-prime", title: "Join Prime", subtitle: "Extra savings and free delivery on every order", image: "/banners/prime.webp", href: "/prime" },
+];
+
+/** The category picture as a URL, or "" when there is none (the storefront then draws a lettered tile). */
+function categoryImage(image: StoreCategory["image"]): string {
+  if (!image) return "";
+  if (typeof image === "string") return image;
+  return image.urls?.medium ?? image.urls?.small ?? "";
+}
 /** The public API does not publish stock, so a product is shown as orderable, up to this many per order. */
 const ORDERABLE_UP_TO = 10;
 const POOL_LIMIT = 1000;
@@ -54,7 +82,7 @@ const DEFAULT_LIMIT = 24;
 
 const json = (body: unknown, status = 200): ApiResponse => ({ status, body });
 const fail = (status: number, code: string, message: string): ApiResponse => ({ status, body: { error: { code, message } } });
-const unavailable = (what: string) => fail(503, "INTERNAL", `${what} isn't available yet.`);
+const unavailable = (what: string) => fail(503, "NOT_AVAILABLE", `${what} isn't available yet.`);
 
 interface Snapshot {
   at: number;
@@ -78,7 +106,7 @@ export function createStoreAdapter(http: ApiAdapter): ApiAdapter {
     const walk = async (parentId: string | null, depth: number): Promise<void> => {
       const res = await get<{ items: StoreCategory[] }>("/categories", parentId ? { parentId } : undefined);
       for (const c of res.items) {
-        out.push({ id: c.id, slug: c.slug, name: c.name, parentId, image: "", productCount: 0 });
+        out.push({ id: c.id, slug: c.slug, name: c.name, parentId, image: categoryImage(c.image) || packArtUrl({ name: c.name, brand: "Femxo", toneKey: c.id }), productCount: 0 });
         if (c.hasChildren && depth < 3) await walk(c.id, depth + 1);
       }
     };
@@ -150,7 +178,7 @@ export function createStoreAdapter(http: ApiAdapter): ApiAdapter {
       const { categories, brands, products } = await current();
       const byId = brandIndex(brands);
       const deals = [...products].sort((a, b) => discountOf(b) - discountOf(a)).slice(0, 12).map((p) => summary(p, byId));
-      return json({ banners: [], deals, featuredCategories: categories.filter((c) => c.parentId === null), primePicks: [] });
+      return json({ banners: STORE_BANNERS, deals, featuredCategories: categories.filter((c) => c.parentId === null), primePicks: [] });
     }
     if (path === "/catalog/categories") return json((await current()).categories);
     if (path === "/catalog/brands") return json((await current()).brands);
@@ -210,18 +238,20 @@ const discountOf = (p: StoreProduct) => {
 
 function summary(p: StoreProduct, brands: Map<string, Brand>): ProductSummary {
   const v = cheapest(p);
+  const brand = brands.get(p.brandId) ?? { id: p.brandId, slug: "", name: "Femxo" };
   return {
     id: p.id,
     slug: p.slug,
     name: p.name,
-    brand: brands.get(p.brandId) ?? { id: p.brandId, slug: "", name: "Femxo" },
+    brand,
     categoryId: p.categoryId,
-    image: p.images[0]?.urls.medium ?? PLACEHOLDER_IMAGE,
+    image: p.images[0]?.urls.medium ?? fallbackImage(p, brand.name),
     rating: 0,
     ratingCount: 0,
     fromPrice: v.price,
     variantId: v.id,
     variantCount: p.variants.length,
+    packLabel: v.label,
     fromPrimePrice: v.price,
     mrp: v.mrp,
     inStock: true,
@@ -239,7 +269,7 @@ function detailOf(p: StoreProduct, snap: Snapshot): ProductDetail {
     ...base,
     description: p.description,
     highlights: [],
-    images: p.images.length ? p.images.map((i) => ({ src: i.urls.large, alt: i.alt || p.name })) : [{ src: PLACEHOLDER_IMAGE, alt: p.name }],
+    images: p.images.length ? p.images.map((i) => ({ src: i.urls.large, alt: i.alt || p.name })) : [{ src: base.image, alt: `${base.brand.name} ${p.name}` }],
     variants: p.variants.map((v) => ({
       id: v.id,
       sku: v.sku,

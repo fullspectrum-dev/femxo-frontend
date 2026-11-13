@@ -50,9 +50,18 @@ that talks to the API. A module whose backend route does not exist shows
 | Finance (wallets, payouts) | `/wallets`, `/finance/payouts` |
 | Prime (plans, subscriptions) | `/membership/*` |
 | Reports, Notification templates, Failed jobs | `/reports/jobs`, `/notifications/templates`, `/admin/dead-letters` |
+| Command center (dashboard) | `/dashboard/*`, `/approvals`, `/delivery/returns`, `/delivery/routes`, `/cod/tasks`, `/inventory/transfers` |
+| Approvals (maker-checker queue) | `/approvals` |
+| Delivery runs, Returns, COD recovery | `/delivery/routes`, `/delivery/returns`, `/cod/tasks` |
+| Brands, Categories, Warehouses | `/catalog/brands`, `/catalog/categories`, `/inventory/warehouses` |
+| Commission plans | `/commission/plans`, `/commission/versions` |
+| Company Overview | `/cms/admin/sections` |
+| Notification bell | `/notifications` |
 
 Not available yet (no backend route): security events, audit log, integrations,
-notification deliveries, company overview.
+notification deliveries.
+
+The admin panel's design rules are in `design-system/femxo/pages/admin.md`.
 
 ## Storefront
 

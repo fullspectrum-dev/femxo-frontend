@@ -11,7 +11,7 @@ import { setAccessToken } from "@/lib/token";
 import { createRefreshGate } from "../refresh-gate";
 
 /** checking: asking the refresh cookie · unavailable: couldn't tell (offline, server error), not the same as signed out. */
-export type SessionStatus = "checking" | "signed-in" | "signed-out" | "unavailable";
+export type SessionStatus = "checking" | "signed-in" | "signed-out" | "unavailable" | "coming-soon";
 
 interface SessionValue {
   status: SessionStatus;
@@ -81,7 +81,7 @@ export function SessionProvider({ auth, children }: { auth?: AuthApi; children: 
     } catch (error) {
       setAccessToken(undefined);
       // No valid session is a plain sign-out; anything else we couldn't verify, so don't claim the customer is signed out.
-      setState((current) => noSession(isApiError(error, "UNAUTHENTICATED") ? "signed-out" : "unavailable", current.tokenVersion + 1));
+      setState((current) => noSession(isApiError(error, "UNAUTHENTICATED") ? "signed-out" : isApiError(error, "NOT_AVAILABLE") ? "coming-soon" : "unavailable", current.tokenVersion + 1));
     }
   }, [applySession, refresh]);
 

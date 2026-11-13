@@ -62,6 +62,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // A role panel's index is its dashboard (a 307 here, not a streamed redirect from the page).
+      { source: "/panel/:panel(admin|warehouse|dealer|sub-dealer)", destination: "/panel/:panel/dashboard", permanent: false },
       { source: "/register", destination: "/login", permanent: false },
       { source: "/verify-otp", destination: "/login", permanent: false },
       { source: "/reset-password", destination: "/forgot-password", permanent: false },

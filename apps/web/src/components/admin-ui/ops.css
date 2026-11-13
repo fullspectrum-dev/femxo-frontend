@@ -1,0 +1,642 @@
+/*
+ * Femxo Ops — the next-generation layer over the Foundations design system (admin.css).
+ *
+ * Direction (ui-ux-pro-max, "Data-Dense Dashboard"): flat, crisp and dense. Hierarchy comes from
+ * weight, colour blocks and hairlines, not from solid "shelf" shadows; elevation is kept for what
+ * floats (popovers, dialogs, drawers, toasts). Brand stays Femxo violet, gold means "needs you",
+ * green only ever means good. Every text pair keeps WCAG AA in both modes, the focus ring keeps
+ * 3:1 against its surroundings, and all motion stops under prefers-reduced-motion.
+ *
+ * Loaded after admin.css in the same layer, so these rules win without !important and Tailwind
+ * utilities on an element still win over both.
+ */
+
+@layer components {
+
+/* ---------- Tokens ---------- */
+
+.fx-admin {
+  --fx-bg: #f6f6f9;
+  --fx-surface: #ffffff;
+  --fx-surface-2: #f3f2f7;
+  --fx-surface-hover: #f8f6fc;
+  --fx-text: #15131f;
+  --fx-text-2: #5c5a70;
+  --fx-border: #e8e6ee;
+  --fx-border-strong: #d6d3e0;
+  --fx-lavender-surface: #f3edfb;
+  --fx-primary-soft: #efe7fa;
+  --fx-primary-hover: #5c2a92;
+
+  --fx-shelf-control: none;
+  --fx-shelf-primary: none;
+  --fx-shelf-gold: none;
+  --fx-shelf-danger: none;
+  --fx-shelf-card: 0 1px 2px rgba(17, 12, 34, 0.04);
+  --fx-elevate: 0 1px 2px rgba(17, 12, 34, 0.06), 0 12px 32px -12px rgba(17, 12, 34, 0.22);
+  /* A two-tone ring: a gap in the surface colour, then the primary. 3:1+ on every surface. */
+  --fx-focus-ring: 0 0 0 2px var(--fx-surface), 0 0 0 4px var(--fx-primary);
+
+  --fx-radius-card: 14px;
+  --fx-radius-control: 10px;
+  --fx-live: #138a4b;
+
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .fx-admin {
+  --fx-bg: #0c0913;
+  --fx-surface: #15111f;
+  --fx-surface-2: #1c1729;
+  --fx-surface-hover: #1b1627;
+  --fx-text: #eeebf6;
+  --fx-text-2: #a7a3bb;
+  --fx-border: #262035;
+  --fx-border-strong: #352d48;
+  --fx-lavender-surface: #241b36;
+  --fx-primary-soft: #261c3a;
+  --fx-topbar-bg: rgba(12, 9, 19, 0.82);
+  --fx-shelf-card: 0 0 0 1px rgba(255, 255, 255, 0.01);
+  --fx-elevate: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 18px 40px -12px rgba(0, 0, 0, 0.7);
+  --fx-focus-ring: 0 0 0 2px var(--fx-surface), 0 0 0 4px #c9a2ef;
+  --fx-live: #5fd49a;
+}
+
+/* ---------- Type ---------- */
+
+.fx-h1 {
+  font-weight: 700;
+  font-size: clamp(22px, 2vw, 28px);
+  letter-spacing: -0.03em;
+}
+.fx-card-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.012em;
+}
+.fx-label {
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+}
+.fx-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+/* ---------- Buttons: flat, pressed by scale, never by moving the layout ---------- */
+
+.fx-btn {
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13.5px;
+  box-shadow: none;
+  transition:
+    background-color 0.15s ease-out,
+    border-color 0.15s ease-out,
+    color 0.15s ease-out,
+    transform 0.1s ease-out;
+}
+.fx-btn:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow: none;
+}
+.fx-btn:focus-visible {
+  box-shadow: var(--fx-focus-ring);
+}
+.fx-btn--sm {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  border-radius: 8px;
+}
+.fx-btn--icon {
+  width: 38px;
+}
+.fx-btn--primary {
+  background: var(--fx-primary);
+  border-color: var(--fx-primary);
+}
+.fx-btn--primary:hover:not(:disabled) {
+  background: var(--fx-primary-hover);
+  border-color: var(--fx-primary-hover);
+}
+.fx-btn--gold {
+  background: var(--fx-gold);
+  border-color: var(--fx-gold);
+}
+.fx-btn--gold:hover:not(:disabled) {
+  background: #ffb93a;
+  border-color: #ffb93a;
+}
+.fx-btn--secondary {
+  border-color: var(--fx-border-strong);
+}
+.fx-btn--secondary:hover:not(:disabled) {
+  background: var(--fx-surface-2);
+}
+.fx-btn--danger {
+  background: #c93a3a;
+  border-color: #c93a3a;
+}
+.fx-btn--danger:hover:not(:disabled) {
+  background: #b02e2e;
+  border-color: #b02e2e;
+}
+.fx-btn--ghost:hover:not(:disabled) {
+  background: var(--fx-surface-2);
+}
+
+.fx-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  transition: background-color 0.15s ease-out;
+}
+.fx-icon-btn:hover {
+  background: var(--fx-surface-2);
+}
+.fx-icon-btn:active {
+  transform: scale(0.95);
+}
+
+/* The unread count on the bell. */
+.fx-count-dot {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--fx-gold);
+  color: var(--fx-gold-text);
+  border: 2px solid var(--fx-surface);
+}
+.fx-unread-pip {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--fx-primary);
+}
+.fx-unread-pip--read {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--fx-border-strong);
+}
+
+/* ---------- Badges: compact data chips ---------- */
+
+.fx-badge {
+  height: 22px;
+  padding: 0 8px;
+  gap: 5px;
+  border-radius: 6px;
+  font-size: 11.5px;
+}
+.fx-badge::before {
+  width: 5px;
+  height: 5px;
+}
+.fx-badge--gold {
+  box-shadow: none;
+}
+
+/* ---------- Surfaces and controls ---------- */
+
+.fx-card {
+  box-shadow: var(--fx-shelf-card);
+}
+.fx-card-pad {
+  padding: 18px;
+}
+.fx-input {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--fx-radius-control);
+}
+textarea.fx-input {
+  height: auto;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+.fx-input:hover:not(:focus):not(:disabled) {
+  border-color: var(--fx-text-2);
+}
+
+/* Tabs: an underline row, dense and scannable, instead of a pill bar. */
+.fx-tabs {
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--fx-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  width: 100%;
+}
+.fx-tabs button {
+  position: relative;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px 8px 0 0;
+  transition: color 0.15s ease-out, background-color 0.15s ease-out;
+}
+.fx-tabs button:hover {
+  color: var(--fx-text);
+  background: var(--fx-surface-2);
+}
+.fx-tabs button[aria-selected="true"] {
+  background: transparent;
+  color: var(--fx-primary-text);
+  box-shadow: inset 0 -2px 0 var(--fx-primary-text);
+}
+
+.fx-segmented {
+  box-shadow: none;
+  /* Never wider than its row: on phones the chips scroll sideways instead of widening the page. */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fx-segmented button {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* ---------- Tables: dense rows, quiet header, clear hover ---------- */
+
+.fx-table thead th {
+  background: var(--fx-surface-2);
+  padding: 9px 14px;
+  font-size: 10.5px;
+}
+.fx-table tbody td {
+  padding: 10px 14px;
+}
+.fx-table tbody tr {
+  transition: background-color 0.12s ease-out;
+}
+.fx-table tbody tr:hover td {
+  background: var(--fx-surface-hover);
+}
+
+/* ---------- Floating layers keep a soft elevation ---------- */
+
+.fx-popover {
+  border-radius: 12px;
+  box-shadow: var(--fx-elevate);
+}
+.fx-menu-item {
+  padding: 9px 10px;
+  border-radius: 8px;
+}
+.fx-menu-item:hover,
+.fx-menu-item[data-active="true"] {
+  background: var(--fx-surface-2);
+}
+
+/* ---------- Shell ---------- */
+
+.fx-topbar {
+  backdrop-filter: saturate(1.6) blur(12px);
+}
+.fx-search {
+  height: 40px;
+  border-radius: 10px;
+}
+
+.fx-sidebar {
+  background: linear-gradient(180deg, #170d26 0%, #100a1b 55%, #0b0713 100%);
+}
+.fx-nav-group {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 16px 0 4px;
+}
+.fx-nav-link {
+  position: relative;
+  height: 36px;
+  gap: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  transition: background-color 0.15s ease-out, color 0.15s ease-out;
+}
+.fx-nav-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.fx-nav-link[aria-current="page"] {
+  background: rgba(167, 123, 224, 0.18);
+  color: #fff;
+  box-shadow: none;
+}
+/* The active page carries a gold rail, so it never depends on colour alone. */
+.fx-nav-link[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--fx-gold);
+}
+.fx-sidebar-card {
+  border-radius: 12px;
+}
+
+.fx-bottom-nav [aria-current="page"] {
+  background: var(--fx-primary-soft);
+  color: var(--fx-primary-text);
+  box-shadow: none;
+}
+
+/* ---------- Command center ---------- */
+
+.fx-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .fx-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .fx-kpi-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.fx-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px 16px;
+}
+.fx-kpi .fx-skeleton {
+  display: block;
+}
+.fx-kpi--link {
+  transition: border-color 0.15s ease-out, background-color 0.15s ease-out;
+}
+.fx-kpi--link:hover {
+  border-color: var(--fx-border-strong);
+  background: var(--fx-surface-hover);
+}
+.fx-kpi--link:focus-visible {
+  box-shadow: var(--fx-focus-ring);
+}
+.fx-kpi-value {
+  font-family: var(--fx-font-display);
+  font-size: clamp(20px, 1.9vw, 26px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.fx-kpi-context {
+  font-size: 12px;
+  color: var(--fx-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fx-kpi-context--warning {
+  color: var(--fx-warning-text);
+}
+.fx-kpi-context--error {
+  color: var(--fx-error-text);
+  font-weight: 600;
+}
+.fx-kpi-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--fx-primary-soft);
+  color: var(--fx-primary-text);
+}
+.fx-kpi-icon--warning {
+  background: var(--fx-warning-bg);
+  color: var(--fx-warning-text);
+}
+.fx-kpi-icon--error {
+  background: var(--fx-error-bg);
+  color: var(--fx-error-text);
+}
+
+/* "Live" pill: a pulsing dot only while the summaries are fresh. */
+.fx-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--fx-border);
+  background: var(--fx-surface);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fx-live-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--fx-live);
+}
+.fx-live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: fx-pulse 2s ease-out infinite;
+}
+.fx-live--stale .fx-live-dot {
+  background: var(--fx-warning);
+}
+.fx-live--stale .fx-live-dot::after {
+  animation: none;
+}
+@keyframes fx-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.fx-spin {
+  animation: fx-spin 0.8s linear infinite;
+}
+@keyframes fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Action inbox */
+.fx-inbox > li + li {
+  border-top: 1px solid var(--fx-border);
+}
+.fx-inbox-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 20px;
+  font-size: 13.5px;
+  transition: background-color 0.12s ease-out;
+}
+.fx-inbox-row:hover {
+  background: var(--fx-surface-hover);
+}
+.fx-inbox-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--fx-primary);
+}
+.fx-inbox-go {
+  color: var(--fx-text-2);
+  transition: transform 0.15s ease-out, color 0.15s ease-out;
+}
+.fx-inbox-row:hover .fx-inbox-go {
+  color: var(--fx-primary-text);
+  transform: translateX(2px);
+}
+.fx-inbox-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+.fx-inbox-icon--approval {
+  background: var(--fx-primary-soft);
+  color: var(--fx-primary-text);
+}
+.fx-inbox-icon--return {
+  background: var(--fx-info-bg);
+  color: var(--fx-info-text);
+}
+.fx-inbox-icon--cod {
+  background: var(--fx-warning-bg);
+  color: var(--fx-warning-text);
+}
+.fx-inbox-icon--transfer {
+  background: var(--fx-neutral-bg);
+  color: var(--fx-neutral-text);
+}
+
+/* Order aging: one stacked bar, ordered good → critical. */
+.fx-aging-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--fx-viz-track);
+}
+.fx-aging-seg {
+  min-width: 4px;
+  flex-basis: 0;
+}
+.fx-aging-key {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 3px;
+}
+.fx-aging-seg--good {
+  background: var(--fx-viz-good);
+}
+.fx-aging-seg--warning {
+  background: var(--fx-viz-warning);
+}
+.fx-aging-seg--serious {
+  background: var(--fx-viz-serious);
+}
+.fx-aging-seg--critical {
+  background: var(--fx-viz-critical);
+}
+
+/* Today's delivery runs */
+.fx-runs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1px;
+  background: var(--fx-border);
+  border-radius: 0 0 var(--fx-radius-card) var(--fx-radius-card);
+  overflow: hidden;
+}
+.fx-run {
+  padding: 14px 20px 16px;
+  background: var(--fx-surface);
+  font-size: 13.5px;
+}
+.fx-run-track {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--fx-viz-track);
+}
+.fx-run-seg {
+  height: 100%;
+  transition: width 0.4s ease-out;
+}
+.fx-run-seg--done {
+  background: var(--fx-viz-good);
+}
+.fx-run-seg--failed {
+  background: var(--fx-viz-critical);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-live-dot::after,
+  .fx-spin {
+    animation: none;
+  }
+  .fx-btn,
+  .fx-icon-btn,
+  .fx-inbox-go,
+  .fx-run-seg,
+  .fx-nav-link,
+  .fx-tabs button {
+    transition: none;
+  }
+  .fx-btn:active:not(:disabled),
+  .fx-icon-btn:active {
+    transform: none;
+  }
+}
+
+}
+
+@layer components {
+/* KPI labels stay on one line so every value sits on the same baseline. */
+.fx-kpi .fx-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+}

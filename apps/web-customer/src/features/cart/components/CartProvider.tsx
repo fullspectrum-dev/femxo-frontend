@@ -9,7 +9,8 @@ import { useToast } from "@femxo/ui";
 import { useSession } from "@/features/auth/components/SessionProvider";
 import { getCartApi } from "@/lib/api";
 
-export type CartStatus = "loading" | "ready" | "error";
+/** coming-soon: the backend has no cart yet (NOT_AVAILABLE), which is not an outage. */
+export type CartStatus = "loading" | "ready" | "error" | "coming-soon";
 
 /** What a change came to: done, or refused with the message the shopper was shown. */
 export type CartResult = { ok: true } | { ok: false; message: string; reason?: CouponRefusal; minCart?: number };
@@ -98,8 +99,8 @@ export function CartProvider({ api, children }: { api?: CartApi; children: React
         confirmed.current = next;
         show(next);
         setStatus("ready");
-      } catch {
-        if (mine === generation.current) setStatus("error");
+      } catch (error) {
+        if (mine === generation.current) setStatus(isApiError(error, "NOT_AVAILABLE") ? "coming-soon" : "error");
       }
     },
     [client, show]

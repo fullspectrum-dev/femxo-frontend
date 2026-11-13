@@ -1,41 +1,46 @@
 /*
- * Femxo storefront design tokens (Tailwind v4 theme).
+ * Femxo storefront design tokens (Tailwind v4 theme). Source of truth for
+ * every colour, type face, radius, shadow and motion value in the storefront;
+ * the rules for using them are in design-system/femxo/MASTER.md.
  *
- * Every value here becomes a utility in apps that import this file:
- * --color-primary → bg-primary / text-primary, --shadow-key → shadow-key,
- * --radius-card → rounded-card. Components use only these tokens, so a
- * palette change happens in one place. Text/background pairs are checked
- * for WCAG AA in tokens.test.ts.
+ * Every value becomes a utility: --color-primary → bg-primary / text-primary,
+ * --radius-card → rounded-card, --shadow-float → shadow-float. Components use
+ * only these tokens, so a palette change happens here and nowhere else.
  *
- * Warmer than the admin panel: a cream page, white product cards, the
- * brand purple for actions and gold for Prime and highlights.
+ * Direction (ui-ux-pro-max, quick commerce): flat and block-based. Colour and
+ * spacing carry hierarchy, not depth; shadows are reserved for things that
+ * float above the page (sheets, the cart bar, toasts). Brand purple drives
+ * actions, gold marks Prime, green always means "you save".
  */
 
 @theme {
   /* Brand */
   --color-primary: #6c35a5;
   --color-primary-hover: #5a2b8c;
-  --color-primary-deep: #45216f;
-  --color-primary-soft: #f2eafb;
+  --color-primary-deep: #3d1d63;
+  --color-primary-soft: #f1eafa;
   --color-on-primary: #ffffff;
+  /* Brand purple that stays put in dark mode: for colour blocks that always carry white text (hero, promos). */
+  --color-brand: #6c35a5;
+  --color-brand-hover: #5a2b8c;
   --color-gold: #ffc45e;
-  --color-gold-deep: #c98a22;
-  --color-gold-soft: #fff3da;
+  --color-gold-deep: #9a6510;
+  --color-gold-soft: #fff4dc;
   --color-on-gold: #3a2205;
 
-  /* Text and surfaces */
-  --color-ink: #12071f;
-  --color-ink-muted: #5e566b;
-  --color-canvas: #fffaf4;
+  /* Text and surfaces: a cool, near-white page so product photos and prices lead */
+  --color-ink: #14101c;
+  --color-ink-muted: #5b5568;
+  --color-canvas: #f6f5f9;
   --color-surface: #ffffff;
-  --color-surface-sunken: #f6f0e8;
-  --color-line: #ede4d8;
-  --color-line-input: #8c8172;
+  --color-surface-sunken: #efedf4;
+  --color-line: #e5e2ec;
+  --color-line-input: #8a8497;
   --color-focus: #6c35a5;
 
   /* Status: each text colour passes AA on its soft background and on white */
-  --color-success: #0e7a4e;
-  --color-success-soft: #e4f5ec;
+  --color-success: #0b7a4b;
+  --color-success-soft: #e3f6ec;
   --color-warning: #8a5300;
   --color-warning-soft: #fff1d6;
   --color-danger: #b42318;
@@ -43,20 +48,40 @@
   --color-info: #2e54b4;
   --color-info-soft: #eaf0fd;
 
-  /* Type: next/font exposes the faces as --font-inter / --font-space-grotesk */
-  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
-  --font-display: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
+  /* Type: Rubik for headings and prices, Nunito Sans for reading (e-commerce pairing).
+     next/font exposes the faces as --font-rubik / --font-nunito. */
+  --font-sans: var(--font-nunito), "Nunito Sans", system-ui, sans-serif;
+  --font-display: var(--font-rubik), "Rubik", system-ui, sans-serif;
 
   /* Shape */
   --radius-card: 16px;
   --radius-control: 12px;
 
-  /* Depth: the 3D "key" shelf under buttons, soft elevation for cards */
-  --shadow-key: 0 3px 0 0 #45216f;
-  --shadow-key-gold: 0 3px 0 0 #c98a22;
-  --shadow-key-neutral: 0 3px 0 0 #e4dacd;
-  --shadow-card: 0 1px 2px rgb(18 7 31 / 0.05), 0 8px 24px -16px rgb(18 7 31 / 0.18);
-  --shadow-raised: 0 24px 48px -16px rgb(18 7 31 / 0.35);
+  /* Depth: flat by default. Only floating layers get a shadow. */
+  --shadow-card: 0 1px 2px rgb(20 16 28 / 0.04);
+  --shadow-raised: 0 12px 32px -12px rgb(20 16 28 / 0.22);
+  --shadow-float: 0 16px 40px -12px rgb(61 29 99 / 0.45);
+
+  /* Motion: quick and consistent; exits faster than entrances */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+
+  --animate-rise: rise 220ms var(--ease-out) both;
+  --animate-pop: pop 180ms var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.92);
+  }
 }
 
 /*
@@ -75,16 +100,16 @@
   --color-primary-soft: #2b1b40;
   --color-on-primary: #1a0b2b;
   --color-gold: #ffc45e;
-  --color-gold-deep: #e0a53a;
+  --color-gold-deep: #f0b44c;
   --color-gold-soft: #3a2c12;
   --color-on-gold: #3a2205;
 
   --color-ink: #f4eefb;
   --color-ink-muted: #b6aac6;
-  --color-canvas: #120a1c;
-  --color-surface: #1c1229;
-  --color-surface-sunken: #261a37;
-  --color-line: #36274b;
+  --color-canvas: #110b19;
+  --color-surface: #1b1326;
+  --color-surface-sunken: #251a34;
+  --color-line: #342847;
   --color-line-input: #8d7fa3;
   --color-focus: #b794ee;
 
@@ -97,7 +122,7 @@
   --color-info: #8fb0ff;
   --color-info-soft: #172447;
 
-  --shadow-key: 0 3px 0 0 #6c35a5;
-  --shadow-key-neutral: 0 3px 0 0 #0c0613;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -16px rgb(0 0 0 / 0.6);
+  --shadow-card: none;
+  --shadow-raised: 0 12px 32px -12px rgb(0 0 0 / 0.7);
+  --shadow-float: 0 16px 40px -12px rgb(0 0 0 / 0.8);
 }

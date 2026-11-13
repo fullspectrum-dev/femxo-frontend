@@ -19,6 +19,21 @@ const PAUSE_MS = 200;
  * that were already replaced. It sits in a plain GET form, so searching
  * still works before this code has loaded.
  */
+/** Things the catalogue actually stocks, cycled in the empty box the way shoppers expect from quick-commerce apps. */
+const HINTS = ["atta", "mustard oil", "basmati rice", "toor dal", "masala tea", "biscuits", "turmeric", "dishwash bar"];
+const HINT_MS = 2600;
+
+/** The example word to show: cycles while the box is empty and idle; holds still for reduced motion. */
+function useCyclingHint(active: boolean) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (!active || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setInterval(() => setIndex((i) => (i + 1) % HINTS.length), HINT_MS);
+    return () => clearInterval(timer);
+  }, [active]);
+  return HINTS[index]!;
+}
+
 export function SearchBox({ search, initialValue = "" }: { search?: SearchApi; initialValue?: string }) {
   const router = useRouter();
   const listId = useId();
@@ -29,6 +44,7 @@ export function SearchBox({ search, initialValue = "" }: { search?: SearchApi; i
   const [value, setValue] = useState(initialValue);
   const [answer, setAnswer] = useState<{ for: string; list: Suggestion[] } | null>(null);
   const [focused, setFocused] = useState(false);
+  const hint = useCyclingHint(!focused && value === "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
 
@@ -104,6 +120,7 @@ export function SearchBox({ search, initialValue = "" }: { search?: SearchApi; i
     >
       <SearchField
         form
+        hint={value === "" ? hint : undefined}
         onSubmit={onSubmit}
         inputProps={{
           value,
@@ -149,10 +166,13 @@ export function SearchBox({ search, initialValue = "" }: { search?: SearchApi; i
 /** The search form itself: also the no-script fallback while the box above loads. */
 export function SearchField({
   form = false,
+  hint,
   onSubmit,
   inputProps,
 }: {
   form?: boolean;
+  /** An example word drawn over the empty box ("Search for 'atta'"); decorative, the label names the field. */
+  hint?: string;
   onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
   inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
 }) {
@@ -161,18 +181,27 @@ export function SearchField({
       <label htmlFor="site-search" className="sr-only">
         Search Femxo
       </label>
-      <div className="flex h-11 items-center rounded-control border border-line-input bg-surface focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-focus">
+      <div className="relative flex h-12 items-center rounded-control border border-line-input bg-surface focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-gold">
+        <Search size={18} aria-hidden="true" className="ml-3.5 flex-none text-ink-muted" />
+        {hint ? (
+          <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-10 flex items-center overflow-hidden text-[15px] text-ink-muted">
+            Search for&nbsp;
+            <span key={hint} className="font-semibold text-ink motion-safe:animate-rise">
+              &ldquo;{hint}&rdquo;
+            </span>
+          </span>
+        ) : null}
         <input
           id="site-search"
           type="search"
           name="q"
           autoComplete="off"
-          placeholder="Search atta, oil, soap and more"
-          className="h-full min-w-0 flex-1 bg-transparent px-4 text-[15px] text-ink outline-none placeholder:text-ink-muted"
+          placeholder={hint ? "" : "Search atta, oil, soap and more"}
+          className="h-full min-w-0 flex-1 bg-transparent px-2.5 text-[15px] text-ink outline-none placeholder:text-ink-muted"
           {...inputProps}
         />
-        <button type="submit" aria-label="Search" className="grid h-11 w-12 flex-none place-items-center rounded-r-control text-primary hover:bg-primary-soft">
-          <Search size={20} aria-hidden="true" />
+        <button type="submit" className="mr-1 h-10 flex-none cursor-pointer rounded-[10px] bg-primary px-4 font-display text-sm font-semibold text-on-primary transition-colors duration-150 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus">
+          Search
         </button>
       </div>
     </>

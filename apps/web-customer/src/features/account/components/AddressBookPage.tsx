@@ -79,11 +79,11 @@ function Book({ api }: { api?: AddressApi }) {
       <ul className="grid gap-3">
         {book.map((entry) =>
           editing === entry.id ? (
-            <li key={entry.id} className="rounded-card border border-primary bg-surface p-4 shadow-card">
+            <li key={entry.id} className="rounded-card border border-primary bg-surface p-4">
               <AddressForm initial={entry} onSave={(input) => save(input, entry.id)} onCancel={() => setEditing(null)} />
             </li>
           ) : (
-            <li key={entry.id} className="flex items-start justify-between gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
+            <li key={entry.id} className="flex items-start justify-between gap-3 rounded-card border border-line bg-surface p-4">
               <div className="grid gap-0.5 text-sm">
                 <p className="flex flex-wrap items-center gap-2 font-semibold">
                   {entry.name}
@@ -121,7 +121,7 @@ function Book({ api }: { api?: AddressApi }) {
       {book.length === 0 && editing !== "new" ? <p className="text-sm text-ink-muted">You haven&apos;t saved an address yet.</p> : null}
 
       {editing === "new" ? (
-        <div className="rounded-card border border-primary bg-surface p-4 shadow-card">
+        <div className="rounded-card border border-primary bg-surface p-4">
           <AddressForm onSave={(input) => save(input, null)} onCancel={() => setEditing(null)} />
         </div>
       ) : (

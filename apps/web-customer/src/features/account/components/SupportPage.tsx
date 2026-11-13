@@ -78,7 +78,7 @@ function NewRequest({ support, orders, onSent, onCancel }: { support: () => Supp
   }
 
   return (
-    <form onSubmit={submit} noValidate aria-label="New request" className="grid gap-4 rounded-card border border-primary bg-surface p-4 shadow-card">
+    <form onSubmit={submit} noValidate aria-label="New request" className="grid gap-4 rounded-card border border-primary bg-surface p-4">
       <TextField label="Subject" value={values.subject} error={errors.subject} maxLength={120} onChange={(e) => setValues({ ...values, subject: e.target.value })} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Select label="Topic" value={values.category} onChange={(e) => setValues({ ...values, category: e.target.value as Ticket["category"] })}>
@@ -178,7 +178,7 @@ function Tickets({ support, orders }: { support?: SupportApi; orders?: OrdersApi
             const status = TICKET_STATUS[ticket.status];
             return (
               <li key={ticket.id}>
-                <Link href={`/account/support/${ticket.id}`} className="grid gap-1 rounded-card border border-line bg-surface p-4 shadow-card transition-shadow hover:shadow-raised focus-visible:outline-2 focus-visible:outline-focus">
+                <Link href={`/account/support/${ticket.id}`} className="grid gap-1 rounded-card border border-line bg-surface p-4 transition-colors duration-150 hover:border-primary focus-visible:outline-2 focus-visible:outline-focus">
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{ticket.subject}</span>
                     <Badge tone={status.tone}>{status.label}</Badge>

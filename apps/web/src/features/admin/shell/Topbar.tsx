@@ -4,32 +4,30 @@ import { Bell, ChevronDown, ChevronRight, CircleQuestionMark, LogOut, Menu, Moon
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { StatusBadge } from "@/components/admin-ui";
 import { toggleTheme, useIsDarkTheme } from "@/components/layout/ThemeToggle";
 import type { AuthUser } from "@/features/auth";
 import type { AccessSummary } from "@/features/auth/types/auth";
 import { useAuthSession } from "@/features/auth";
-import type { StatusKey } from "@/components/admin-ui";
 import { forMode, hasBackend } from "../data/api";
-import { initials } from "../format";
+import { formatDateTime, initials } from "../format";
 import { MODULES } from "../modules/registry";
-import { findNav } from "../nav";
+import { usePanel } from "./PanelContext";
 import { CommandSearch } from "./CommandSearch";
 import { Popover } from "./Popover";
 import { describeAccess } from "./useAccessSummary";
+import { NOTIFICATION_HREF, useNotifications } from "./useNotifications";
 
 // Only the create forms the API supports (taken from the module registry), never a canned list.
 const QUICK_LINKS = MODULES.flatMap((module) =>
   module.views.flatMap((view) => {
     const create = hasBackend(view.dataset) ? forMode(view).create : undefined;
-    return create ? [{ label: create.label, href: `/admin/${module.key}?create=1` }] : [];
+    return create ? [{ key: module.key, label: create.label, href: `/admin/${module.key}?create=1` }] : [];
   })
 );
 
 export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; access: AccessSummary | null; onMenu: () => void; menuLabel: string }) {
-  // Notifications have no staff-facing API yet, so there are no alerts to show.
-  const bellItems: readonly { title: string; meta: string; status: StatusKey; href: string }[] = [];
-  const quickLinks = QUICK_LINKS;
+  const { find, to, items, panel } = usePanel();
+  const quickLinks = QUICK_LINKS.filter((link) => items.some((item) => item.key === link.key)).map((link) => ({ ...link, href: to(link.href) }));
   const who = describeAccess(access);
   const pathname = usePathname();
   const isDark = useIsDarkTheme();
@@ -38,8 +36,9 @@ export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; ac
   const router = useRouter();
   const { signOut } = useAuthSession();
   const [mobileSearch, setMobileSearch] = useState(false);
-  const nav = findNav(pathname);
+  const nav = find(pathname);
   const groupLabel = nav?.group.label.split(" & ")[0];
+  const bell = useNotifications(pathname);
 
   return (
     <header className="fx-topbar sticky top-0 z-30">
@@ -56,7 +55,7 @@ export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; ac
 
         <nav aria-label="Breadcrumb" className="hidden min-w-0 lg:block">
           <ol className="flex items-center gap-2 whitespace-nowrap text-[13px]">
-            <li className="fx-muted">Femxo</li>
+            <li className="fx-muted">Femxo · {panel.name}</li>
             {groupLabel ? (
               <li className="flex items-center gap-2 fx-muted">
                 <ChevronRight size={14} aria-hidden="true" />
@@ -112,31 +111,49 @@ export function Topbar({ user, access, onMenu, menuLabel }: { user: AuthUser; ac
           trigger={
             <>
               <Bell size={19} aria-hidden="true" />
-              {bellItems.length ? <span className="fx-dot" aria-hidden="true" /> : null}
-              <span className="sr-only">{bellItems.length ? `, ${bellItems.length} new` : ", none new"}</span>
+              {bell.unread ? (
+                <span className="fx-count-dot" aria-hidden="true">
+                  {bell.unread > 9 ? "9+" : bell.unread}
+                </span>
+              ) : null}
+              <span className="sr-only">{bell.unread ? `, ${bell.unread} unread` : ", none unread"}</span>
             </>
           }
         >
           {(close) => (
             <div>
-              <p className="px-3 pb-2 pt-1 fx-label">Needs attention</p>
-              {bellItems.length ? null : <p className="px-3 pb-3 text-[13px] fx-muted">Nothing needs attention.</p>}
-              <ul>
-                {bellItems.map((item) => (
-                  <li key={item.title}>
-                    <Link href={item.href} className="fx-menu-item items-start justify-between" onClick={close}>
+              <p className="flex items-center justify-between px-3 pb-2 pt-1">
+                <span className="fx-label">Notifications</span>
+                {bell.unread ? <span className="text-[12px] font-semibold text-[var(--fx-primary-text)]">{bell.unread} unread</span> : null}
+              </p>
+              {bell.items.length ? null : <p className="px-3 pb-3 text-[13px] fx-muted">You&rsquo;re all caught up.</p>}
+              <ul className="max-h-[360px] overflow-y-auto">
+                {bell.items.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      href={to(NOTIFICATION_HREF[item.event] ?? "/admin/dashboard")}
+                      className="fx-menu-item items-start gap-3"
+                      onClick={() => {
+                        if (!item.read) void bell.markRead(item.id);
+                        close();
+                      }}
+                    >
+                      <span className={item.read ? "fx-unread-pip fx-unread-pip--read" : "fx-unread-pip"} aria-hidden="true" />
                       <span className="min-w-0">
-                        <span className="block font-semibold">{item.title}</span>
-                        <span className="block text-[12px] fx-muted">{item.meta}</span>
+                        <span className={item.read ? "block" : "block font-semibold"}>{item.title}</span>
+                        <span className="block text-[12px] fx-muted line-clamp-2">{item.body}</span>
+                        <span className="block text-[11px] fx-muted">{formatDateTime(item.createdAt)}</span>
                       </span>
-                      <StatusBadge status={item.status} />
+                      {item.read ? null : <span className="sr-only">(unread)</span>}
                     </Link>
                   </li>
                 ))}
               </ul>
-              <Link href="/admin/notifications" className="fx-menu-item justify-center font-semibold text-[var(--fx-primary-text)]" onClick={close}>
-                View all notifications
-              </Link>
+              {items.some((entry) => entry.key === "notifications") ? (
+                <Link href={to("/admin/notifications")} className="fx-menu-item justify-center font-semibold text-[var(--fx-primary-text)]" onClick={close}>
+                  Notification templates
+                </Link>
+              ) : null}
             </div>
           )}
         </Popover>

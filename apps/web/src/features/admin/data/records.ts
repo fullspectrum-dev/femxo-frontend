@@ -33,4 +33,12 @@ export type DatasetKey =
   | "templates"
   | "integrations"
   | "deadLetters"
-  | "gstins";
+  | "gstins"
+  | "approvals"
+  | "returns"
+  | "deliveryRoutes"
+  | "codTasks"
+  | "commissionPlans"
+  | "warehouses"
+  | "brands"
+  | "categories";

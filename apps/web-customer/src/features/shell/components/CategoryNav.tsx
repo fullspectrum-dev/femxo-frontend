@@ -11,7 +11,7 @@ export function CategoryNav({ categories }: { categories: readonly NavCategory[]
   const pathname = usePathname();
   return (
     <nav aria-label={t("shell.nav.categories")} className="border-b border-line bg-surface">
-      <ul className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 [scrollbar-width:none]">
+      <ul className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {categories.map((category) => {
           const href = `/c/${category.slug}`;
           const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -21,8 +21,8 @@ export function CategoryNav({ categories }: { categories: readonly NavCategory[]
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-focus",
-                  active ? "border-primary font-semibold text-primary" : "border-transparent text-ink hover:text-primary"
+                  "inline-flex h-9 items-center whitespace-nowrap rounded-full px-4 font-display text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                  active ? "bg-primary text-on-primary" : "bg-surface-sunken text-ink hover:bg-primary-soft hover:text-primary"
                 )}
               >
                 {category.name}

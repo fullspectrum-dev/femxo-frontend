@@ -19,6 +19,10 @@ export const STATUS_META = {
   enabled: { label: "Enabled", tone: "success" },
   healthy: { label: "Healthy", tone: "success" },
   sent: { label: "Sent", tone: "success" },
+  published: { label: "Published", tone: "success" },
+  live: { label: "Live", tone: "success" },
+  recovered: { label: "Recovered", tone: "success" },
+  closed: { label: "Closed", tone: "neutral" },
 
   pending: { label: "Pending", tone: "warning" },
   submitted: { label: "Submitted", tone: "warning" },
@@ -31,6 +35,13 @@ export const STATUS_META = {
   requested: { label: "Requested", tone: "warning" },
   placed: { label: "Placed", tone: "warning" },
   degraded: { label: "Degraded", tone: "warning" },
+  escalated: { label: "Escalated", tone: "warning" },
+  changes_pending: { label: "Unpublished changes", tone: "warning" },
+  planned: { label: "Planned", tone: "info" },
+  out: { label: "Out for delivery", tone: "info" },
+  validated: { label: "Validated", tone: "info" },
+  investigation: { label: "Investigation", tone: "info" },
+  liability: { label: "Liability set", tone: "info" },
 
   processing: { label: "Processing", tone: "info" },
   queued: { label: "Queued", tone: "info" },
@@ -59,6 +70,8 @@ export const STATUS_META = {
   retried: { label: "Retried", tone: "neutral" },
   inactive: { label: "Inactive", tone: "neutral" },
   not_required: { label: "Not required", tone: "neutral" },
+  written_off: { label: "Written off", tone: "neutral" },
+  unpublished: { label: "Never published", tone: "neutral" },
 } as const satisfies Record<string, { label: string; tone: BadgeTone }>;
 
 export type StatusKey = keyof typeof STATUS_META;

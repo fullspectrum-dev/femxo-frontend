@@ -133,6 +133,326 @@ const subDealersView: ViewSpec = {
   empty: { title: "No sub-dealers yet", message: "Sub-dealers appear here once dealers add them." },
 };
 
+// ---------- Views added with the full backend integration ----------
+
+const archiveActions = (entity: string, effect: string): ActionSpec[] => [
+  {
+    key: "archive", label: "Archive", from: ["active"], to: "archived", variant: "danger",
+    confirm: destructive(`Archive ${entity}`, effect, "Archive"),
+    toast: (r) => `${r.name} archived.`,
+  },
+  { key: "restore", label: "Restore", from: ["archived"], to: "active", variant: "secondary", toast: (r) => `${r.name} restored.` },
+];
+
+/** A confirm that also asks for a written reason (kept in the audit log). */
+const withReason = (kind: "destructive" | "financial", title: string, description: string, confirmLabel: string, label: string, amountKey?: string) =>
+  ({ kind, title, description, confirmLabel, amountKey, reason: { label, min: 3 } }) as const;
+
+const brandsView: ViewSpec = {
+  key: "brands",
+  label: "Brands",
+  dataset: "brands",
+  entity: "brand",
+  searchPlaceholder: "Search brands",
+  searchKeys: ["name", "slug"],
+  columns: [
+    { key: "name", header: "Brand", primary: true, sub: "slug" },
+    { key: "created", header: "Added", format: "date", hideOnMobile: true },
+    { key: "updated", header: "Updated", format: "date", hideOnMobile: true },
+    { key: "status", header: "Status", format: "status" },
+  ],
+  statuses: ["active", "archived"],
+  details: [
+    { label: "Web address", key: "slug" },
+    { label: "Added", key: "created", format: "date" },
+    { label: "Updated", key: "updated", format: "date" },
+  ],
+  recordName: (r) => String(r.name),
+  actions: archiveActions("brand", "It can no longer be picked for new products. Existing products keep it."),
+  empty: { title: "No brands yet", message: "Add the brands your products are sold under." },
+  pageSize: 10,
+};
+
+const categoriesView: ViewSpec = {
+  key: "categories",
+  label: "Categories",
+  dataset: "categories",
+  entity: "category",
+  searchPlaceholder: "Search categories",
+  searchKeys: ["path", "slug"],
+  columns: [
+    { key: "path", header: "Category", primary: true, sub: "slug" },
+    { key: "level", header: "Level", format: "count" },
+    { key: "order", header: "Position", format: "count", hideOnMobile: true },
+    { key: "status", header: "Status", format: "status" },
+  ],
+  statuses: ["active", "archived"],
+  details: [
+    { label: "Parent", key: "parent" },
+    { label: "Level", key: "level", format: "count" },
+    { label: "Position", key: "order", format: "count" },
+    { label: "Web address", key: "slug" },
+  ],
+  recordName: (r) => String(r.path),
+  actions: archiveActions("category", "It disappears from the storefront aisles. Products in it keep their category."),
+  empty: { title: "No categories yet", message: "Build the aisle tree shoppers browse." },
+  pageSize: 12,
+};
+
+const warehousesView: ViewSpec = {
+  key: "warehouses",
+  label: "Warehouses",
+  dataset: "warehouses",
+  entity: "warehouse",
+  searchPlaceholder: "Search warehouses",
+  searchKeys: ["name", "code", "address"],
+  columns: [
+    { key: "name", header: "Warehouse", primary: true, sub: "code" },
+    { key: "address", header: "Address", hideOnMobile: true },
+    { key: "created", header: "Opened", format: "date", hideOnMobile: true },
+    { key: "status", header: "Status", format: "status" },
+  ],
+  statuses: ["active", "archived"],
+  details: [
+    { label: "Code", key: "code" },
+    { label: "Address", key: "address" },
+    { label: "Opened", key: "created", format: "date" },
+  ],
+  recordName: (r) => `${r.code} · ${r.name}`,
+  note: () => "Only a warehouse that holds no stock can be archived.",
+  actions: archiveActions("warehouse", "No stock can be received or sent from it until restored."),
+  empty: { title: "No warehouses yet", message: "Add a dark store or depot to start holding stock." },
+};
+
+const returnsView: ViewSpec = {
+  key: "returns",
+  label: "Returns",
+  dataset: "returns",
+  entity: "return",
+  searchPlaceholder: "Search order or reason",
+  searchKeys: ["order", "reason", "requestedBy"],
+  columns: [
+    { key: "order", header: "Order", primary: true, sub: "reason" },
+    { key: "units", header: "Units", format: "count" },
+    { key: "requestedBy", header: "Requested by", hideOnMobile: true },
+    { key: "requested", header: "Requested", format: "datetime", hideOnMobile: true },
+    { key: "status", header: "Status", format: "status" },
+  ],
+  statuses: ["requested", "approved", "rejected"],
+  details: [
+    { label: "Order", key: "order" },
+    { label: "Units", key: "units", format: "count" },
+    { label: "Reason", key: "reason" },
+    { label: "Requested by", key: "requestedBy" },
+    { label: "Requested", key: "requested", format: "datetime" },
+    { label: "Decided by", key: "decidedBy" },
+    { label: "Decision note", key: "decision" },
+  ],
+  recordName: (r) => `Return · ${r.order}`,
+  note: (r) => (r.status === "requested" ? "The commission on these units is held until you decide." : null),
+  actions: [
+    {
+      key: "approve", label: "Approve return", from: ["requested"], to: "approved", variant: "primary",
+      confirm: withReason("destructive", "Approve return", "The units come back and their commission is reversed.", "Approve return", "Note for the audit log"),
+      toast: (r) => `Return on ${r.order} approved.`,
+    },
+    {
+      key: "reject", label: "Reject", from: ["requested"], to: "rejected", variant: "danger",
+      confirm: withReason("destructive", "Reject return", "The held commission is released to the partner.", "Reject return", "Why it is rejected"),
+      toast: (r) => `Return on ${r.order} rejected.`,
+    },
+  ],
+  empty: { title: "No return requests", message: "Requests made inside the return window appear here." },
+};
+
+const routesView: ViewSpec = {
+  key: "routes",
+  label: "Delivery runs",
+  dataset: "deliveryRoutes",
+  entity: "route",
+  searchPlaceholder: "Day, YYYY-MM-DD",
+  searchKeys: ["name", "agent"],
+  columns: [
+    { key: "name", header: "Route", primary: true, sub: "agent" },
+    { key: "stops", header: "Stops", format: "count" },
+    { key: "delivered", header: "Delivered", format: "count" },
+    { key: "failed", header: "Failed", format: "count", hideOnMobile: true },
+    { key: "cash", header: "Cash at door", format: "inr", hideOnMobile: true },
+    { key: "status", header: "Status", format: "status" },
+  ],
+  statuses: ["planned", "out", "closed"],
+  details: [
+    { label: "Delivery partner", key: "agent" },
+    { label: "Day", key: "date", format: "date" },
+    { label: "Stops", key: "stops", format: "count" },
+    { label: "Delivered", key: "delivered", format: "count" },
+    { label: "Failed", key: "failed", format: "count" },
+    { label: "Still to go", key: "pending", format: "count" },
+    { label: "Completion", key: "progress" },
+    { label: "Cash taken at the door", key: "cash", format: "inr" },
+  ],
+  recordName: (r) => String(r.name),
+  subtitle: (r) => `${r.agent} · ${r.date}`,
+  timeline: {
+    label: "Run progress",
+    steps: (r) => steps(["Planned", "Out for delivery", "Closed"], r.status === "planned" ? 0 : r.status === "out" ? 1 : 3),
+  },
+  note: () => "Partners start and close runs from the delivery app; every stop is confirmed with the customer's OTP.",
+  readOnly: true,
+  empty: { title: "No runs on this day", message: "Runs planned for the day appear here. Try another date in the search box." },
+  pageSize: 20,
+};
+
+const codTasksView: ViewSpec = {
+  key: "cod",
+  label: "COD recovery",
+  dataset: "codTasks",
+  entity: "recovery task",
+  searchPlaceholder: "Search order or partner",
+  searchKeys: ["order", "owner"],
+  columns: [
+    { key: "order", header: "Order", primary: true, sub: "owner" },
+    { key: "level", header: "Escalation", format: "count" },
+    { key: "attempts", header: "Attempts", format: "count" },
+    { key: "liability", header: "Liability", format: "inr", hideOnMobile: true },
+    { key: "next", header: "Next action", format: "datetime", hideOnMobile: true },
+    { key: "status", header: "Status", format: "status" },
+  ],
+  statuses: ["open", "escalated", "investigation", "liability", "recovered", "written_off", "closed"],
+  details: [
+    { label: "Partner", key: "owner" },
+    { label: "Escalation level", key: "level", format: "count" },
+    { label: "Attempts", key: "attempts", format: "count" },
+    { label: "Last attempt", key: "lastAttempt" },
+    { label: "Next action", key: "next", format: "datetime" },
+    { label: "Findings", key: "findings" },
+    { label: "Liable", key: "liable" },
+    { label: "Liability", key: "liability", format: "inr" },
+    { label: "Plan", key: "plan" },
+    { label: "Opened", key: "created", format: "datetime" },
+  ],
+  recordName: (r) => `Recovery · ${r.order}`,
+  timeline: {
+    label: "Recovery progress",
+    steps: (r) => {
+      const labels = ["Collect", "Escalate", "Investigate", "Liability", "Settled"];
+      const index = { open: 0, escalated: 1, investigation: 2, liability: 3, recovered: 5, written_off: 5, closed: 5 } as Partial<Record<StatusKey, number>>;
+      return steps(labels, index[r.status] ?? 0);
+    },
+  },
+  note: (r) => (r.status === "liability" ? "Recovery or write-off runs only after a different person approves it (maker-checker)." : null),
+  actions: [
+    {
+      key: "attempt", label: "Log attempt", from: ["open", "escalated"], variant: "primary",
+      confirm: withReason("destructive", "Log a collection attempt", "Recorded on the task with your name and the time.", "Log attempt", "What happened"),
+      toast: (r) => `Attempt logged on ${r.order}.`,
+    },
+    {
+      key: "escalate", label: "Escalate", from: ["open", "escalated"], to: "escalated", variant: "secondary",
+      confirm: withReason("destructive", "Escalate recovery", "Raises the escalation level by one.", "Escalate", "Why it is escalated"),
+      toast: (r) => `${r.order} escalated.`,
+    },
+    {
+      key: "investigate", label: "Open investigation", from: ["open", "escalated"], to: "investigation", variant: "secondary",
+      confirm: withReason("destructive", "Open an investigation", "Collection attempts stop while it is investigated.", "Open investigation", "Findings so far"),
+      toast: (r) => `Investigation opened on ${r.order}.`,
+    },
+    {
+      key: "execute", label: "Carry out approved plan", from: ["liability"], variant: "gold",
+      confirm: financial("Carry out recovery", "Recovers the liability from the wallet or writes it off, as approved. This can't be undone.", "Carry it out", "liability"),
+      toast: (r) => `${r.order} settled.`,
+    },
+  ],
+  empty: { title: "No recovery tasks", message: "Orders that still owe money after delivery appear here." },
+};
+
+const commissionView: ViewSpec = {
+  key: "commission",
+  label: "Commission plans",
+  dataset: "commissionPlans",
+  entity: "commission plan",
+  searchPlaceholder: "Search plans",
+  searchKeys: ["name", "scope"],
+  columns: [
+    { key: "name", header: "Plan", primary: true, sub: "scope" },
+    { key: "model", header: "Model", hideOnMobile: true },
+    { key: "dealerRate", header: "Dealer / pool" },
+    { key: "subDealerRate", header: "Sub-dealer", hideOnMobile: true },
+    { key: "live", header: "Live version" },
+    { key: "status", header: "Latest", format: "status" },
+  ],
+  statuses: ["draft", "validated", "published"],
+  details: [
+    { label: "Applies to", key: "scope" },
+    { label: "Latest version", key: "version" },
+    { label: "Live version", key: "live" },
+    { label: "Model", key: "model" },
+    { label: "Dealer (or pool) rate", key: "dealerRate" },
+    { label: "Sub-dealer rate", key: "subDealerRate" },
+    { label: "Effective from", key: "from", format: "date" },
+  ],
+  recordName: (r) => `${r.name} · ${r.version}`,
+  timeline: {
+    label: "Latest version",
+    steps: (r) => steps(["Draft", "Validated", "Published"], r.status === "draft" ? 0 : r.status === "validated" ? 1 : 3),
+  },
+  note: (r) => (r.status === "published" ? "A published version never changes. Corrections are a new version." : null),
+  actions: [
+    { key: "validate", label: "Validate", from: ["draft"], to: "validated", variant: "primary", toast: (r) => `${r.name} ${r.version} validated.` },
+    {
+      key: "publish", label: "Publish", from: ["validated"], to: "published", variant: "gold",
+      confirm: withReason("financial", "Publish commission version", "Orders use these rates from the effective date. It can never be edited again.", "Publish", "Note for the audit log"),
+      toast: (r) => `${r.name} ${r.version} published.`,
+    },
+  ],
+  empty: { title: "No commission plans", message: "Plans decide what dealers and sub-dealers earn per order." },
+};
+
+const approvalsView: ViewSpec = {
+  key: "approvals",
+  label: "Approval queue",
+  dataset: "approvals",
+  entity: "approval",
+  searchPlaceholder: "Search request, maker or checker",
+  searchKeys: ["kind", "subject", "maker", "checker"],
+  columns: [
+    { key: "kind", header: "Request", primary: true, sub: "subject" },
+    { key: "maker", header: "Raised by", hideOnMobile: true },
+    { key: "checker", header: "Assigned to" },
+    { key: "due", header: "Due", format: "datetime", hideOnMobile: true },
+    { key: "sla", header: "SLA" },
+    { key: "status", header: "Status", format: "status" },
+  ],
+  statuses: ["pending", "approved", "rejected"],
+  details: [
+    { label: "Record", key: "subject" },
+    { label: "Raised by (maker)", key: "maker" },
+    { label: "Assigned to (checker)", key: "checker" },
+    { label: "Due", key: "due", format: "datetime" },
+    { label: "SLA", key: "sla" },
+    { label: "Decided by", key: "decidedBy" },
+    { label: "Decided", key: "decidedAt", format: "datetime" },
+    { label: "Reason", key: "decision" },
+  ],
+  recordName: (r) => String(r.kind),
+  subtitle: (r) => String(r.subject),
+  note: (r) => (r.status === "pending" ? "Four-eyes rule: the person who raised a request can't decide it." : null),
+  actions: [
+    {
+      key: "approve", label: "Approve", from: ["pending"], to: "approved", variant: "primary",
+      confirm: withReason("financial", "Approve request", "The action it guards runs as soon as you approve.", "Approve", "Reason"),
+      toast: (r) => `${r.kind} approved.`,
+    },
+    {
+      key: "reject", label: "Reject", from: ["pending"], to: "rejected", variant: "danger",
+      confirm: withReason("destructive", "Reject request", "Nothing it guards is carried out.", "Reject", "Reason"),
+      toast: (r) => `${r.kind} rejected.`,
+    },
+  ],
+  empty: { title: "Nothing waiting", message: "Requests that need a second person land here." },
+  pageSize: 10,
+};
+
 // ---------- Modules ----------
 
 export const MODULES: readonly ModuleSpec[] = [
@@ -327,7 +647,15 @@ export const MODULES: readonly ModuleSpec[] = [
         empty: { title: "No records yet", message: "Create the first product to start the catalogue." },
         pageSize: 8,
       },
+      brandsView,
+      categoriesView,
     ],
+  },
+  {
+    key: "approvals",
+    title: "Approvals",
+    description: "Everything that needs a second pair of eyes. Decisions are written to the audit log.",
+    views: [approvalsView],
   },
   { key: "dealers", title: "Dealers", description: "District partners: KYC, approval, territory and wallet.", views: [dealersView] },
   { key: "sub-dealers", title: "Sub-Dealers", description: "Village partners under a dealer, with the same KYC checks.", views: [subDealersView] },
@@ -444,6 +772,7 @@ export const MODULES: readonly ModuleSpec[] = [
         ],
         empty: { title: "No adjustments", message: "Damage, expiry and count corrections appear here." },
       },
+      warehousesView,
     ],
   },
   {
@@ -610,6 +939,9 @@ export const MODULES: readonly ModuleSpec[] = [
         empty: { title: "No orders yet", message: "Orders appear when customers, field staff or partners place them." },
         pageSize: 8,
       },
+      routesView,
+      returnsView,
+      codTasksView,
     ],
   },
   {
@@ -744,6 +1076,7 @@ export const MODULES: readonly ModuleSpec[] = [
         readOnly: true,
         empty: { title: "No wallets", message: "Wallets are created when a partner is activated." },
       },
+      commissionView,
     ],
   },
   {

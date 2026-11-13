@@ -15,6 +15,7 @@ import { BillSummary } from "@/features/cart/components/BillSummary";
 import { PaymentSheet } from "@/features/payments/components/PaymentSheet";
 import { getOrdersApi, getPaymentApi } from "@/lib/api";
 import { ORDER_STATUS, PAYMENT_STATUS } from "../status";
+import { OrderAgainButton } from "./OrderAgainButton";
 import { OrderTimeline } from "./OrderTimeline";
 
 const DATE = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
@@ -203,6 +204,7 @@ function Detail({ id, orders, payments }: { id: string; orders?: OrdersApi; paym
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {order.kind === "prime" ? null : <OrderAgainButton lines={order.lines} />}
           {order.paymentRetryable ? (
             <Button busy={payBusy} onClick={() => void payNow()}>
               {order.paymentStatus === "failed" ? "Retry payment" : "Pay now"}
@@ -223,22 +225,22 @@ function Detail({ id, orders, payments }: { id: string; orders?: OrdersApi; paym
 
       <div className="grid items-start gap-5 lg:grid-cols-[1fr_22rem]">
         <div className="grid gap-5">
-          <section aria-labelledby="tracking-heading" className="rounded-card border border-line bg-surface p-4 shadow-card md:p-5">
-            <h2 id="tracking-heading" className="mb-4 text-base font-semibold">
+          <section aria-labelledby="tracking-heading" className="rounded-card border border-line bg-surface p-4 md:p-5">
+            <h2 id="tracking-heading" className="font-display mb-4 text-base font-semibold">
               Tracking
             </h2>
             <OrderTimeline timeline={order.timeline} status={order.status} />
           </section>
 
-          <section aria-labelledby="items-heading" className="rounded-card border border-line bg-surface p-4 shadow-card md:p-5">
-            <h2 id="items-heading" className="mb-3 text-base font-semibold">
+          <section aria-labelledby="items-heading" className="rounded-card border border-line bg-surface p-4 md:p-5">
+            <h2 id="items-heading" className="font-display mb-3 text-base font-semibold">
               Items
             </h2>
             <ul className="grid gap-3">
               {order.lines.map((line) => (
                 <li key={line.id} className="flex items-center gap-3">
                   <Link href={`/p/${line.product.slug}`} tabIndex={-1} aria-hidden="true" className="relative size-14 flex-none overflow-hidden rounded-control bg-surface-sunken">
-                    <Image src={line.product.image} alt="" fill sizes="56px" className="object-cover" />
+                    <Image src={line.product.image} alt="" fill sizes="56px" className="object-contain p-1" />
                   </Link>
                   <div className="min-w-0 flex-1 text-sm">
                     <Link href={`/p/${line.product.slug}`} className="font-semibold hover:text-primary hover:underline">
@@ -258,8 +260,8 @@ function Detail({ id, orders, payments }: { id: string; orders?: OrdersApi; paym
         <div className="grid gap-4">
           <BillSummary cart={{ breakup: order.breakup, itemCount: order.itemCount, coupon: null }} />
           {order.kind === "prime" ? null : (
-          <section aria-labelledby="delivery-heading" className="rounded-card border border-line bg-surface p-4 text-sm shadow-card">
-            <h2 id="delivery-heading" className="mb-2 text-base font-semibold">
+          <section aria-labelledby="delivery-heading" className="rounded-card border border-line bg-surface p-4 text-sm">
+            <h2 id="delivery-heading" className="font-display mb-2 text-base font-semibold">
               Delivery address
             </h2>
             <p className="font-semibold">{order.address.name}</p>
@@ -273,8 +275,8 @@ function Detail({ id, orders, payments }: { id: string; orders?: OrdersApi; paym
             <p className="text-ink-muted">+91 {order.address.mobile}</p>
           </section>
           )}
-          <section aria-labelledby="payment-heading" className="rounded-card border border-line bg-surface p-4 text-sm shadow-card">
-            <h2 id="payment-heading" className="mb-2 text-base font-semibold">
+          <section aria-labelledby="payment-heading" className="rounded-card border border-line bg-surface p-4 text-sm">
+            <h2 id="payment-heading" className="font-display mb-2 text-base font-semibold">
               Payment
             </h2>
             <p>

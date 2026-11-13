@@ -25,6 +25,21 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
 
   if (status === "signed-in" && user) return <>{children}</>;
 
+  // The backend doesn't offer customer accounts yet: say so plainly, and send the shopper back to shopping.
+  if (status === "coming-soon") {
+    return (
+      <EmptyState
+        title="Accounts are coming soon"
+        message="Sign-in, orders and your wishlist open shortly. You can browse the full catalogue right now."
+        action={
+          <Link href="/" className={buttonClasses()}>
+            Keep shopping
+          </Link>
+        }
+      />
+    );
+  }
+
   if (status === "unavailable") {
     return <ErrorState title="We couldn't check your sign-in" message="Check your connection and try again." onRetry={retry} />;
   }
@@ -49,30 +64,5 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
       <Skeleton className="h-8 w-2/3" />
       <Skeleton className="h-24 w-full" />
     </div>
-  );
-}
-
-/** Prime pages: members see them, everyone else is invited to join. */
-export function RequirePrime({ children }: { children: ReactNode }) {
-  return (
-    <RequireCustomer>
-      <PrimeOnly>{children}</PrimeOnly>
-    </RequireCustomer>
-  );
-}
-
-function PrimeOnly({ children }: { children: ReactNode }) {
-  const { user } = useSession();
-  if (user?.isPrime) return <>{children}</>;
-  return (
-    <EmptyState
-      title="This is for Prime members"
-      message="Join Prime for member prices, free delivery and coupons."
-      action={
-        <Link href="/prime" className={buttonClasses({ variant: "gold" })}>
-          See Prime plans
-        </Link>
-      }
-    />
   );
 }

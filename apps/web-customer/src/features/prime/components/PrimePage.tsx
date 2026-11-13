@@ -8,7 +8,7 @@ import { formatINR } from "@femxo/shared";
 import { isApiError } from "@femxo/shared/api";
 import type { AuthApi, PrimeApi } from "@femxo/shared/api";
 import type { MembershipStatus, PaymentIntent, PrimePlan } from "@femxo/shared/contracts";
-import { Badge, Button, ErrorState, Skeleton, useToast } from "@femxo/ui";
+import { Badge, Button, buttonClasses, EmptyState, ErrorState, Skeleton, useToast } from "@femxo/ui";
 import { useSession } from "@/features/auth/components/SessionProvider";
 import { PaymentSheet } from "@/features/payments/components/PaymentSheet";
 import { getAuthApi, getPrimeApi } from "@/lib/api";
@@ -26,7 +26,7 @@ interface Pending {
 function PlanCard({ plan, verb, highlight, busy, onChoose }: { plan: PrimePlan; verb: string; highlight: boolean; busy: boolean; onChoose: () => void }) {
   const months = Math.max(1, Math.round(plan.durationDays / 30));
   return (
-    <li className={highlight ? "relative flex flex-col gap-3 rounded-card border-2 border-primary bg-surface p-5 shadow-raised" : "flex flex-col gap-3 rounded-card border border-line bg-surface p-5 shadow-card"}>
+    <li className={highlight ? "relative flex flex-col gap-3 rounded-card border-2 border-primary bg-surface p-5" : "flex flex-col gap-3 rounded-card border border-line bg-surface p-5"}>
       {highlight ? <Badge tone="gold" className="absolute -top-3 left-5">Best value</Badge> : null}
       <h3 className="font-display text-xl font-bold">{plan.name}</h3>
       <p>
@@ -63,7 +63,7 @@ export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi })
 
   const [plans, setPlans] = useState<PrimePlan[] | null>(null);
   const [state, setState] = useState<MembershipStatus | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<boolean | "coming-soon">(false);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [unpaid, setUnpaid] = useState<string | null>(null);
@@ -76,7 +76,7 @@ export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi })
     primeApi()
       .plans()
       .then((list) => !cancelled && setPlans(list))
-      .catch(() => !cancelled && setFailed(true));
+      .catch((error) => !cancelled && setFailed(isApiError(error, "NOT_AVAILABLE") ? "coming-soon" : true));
     return () => {
       cancelled = true;
     };
@@ -127,6 +127,19 @@ export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi })
     toast("Welcome to Prime! Prime prices and free delivery are on.");
   }
 
+  if (failed === "coming-soon" && !plans) {
+    return (
+      <EmptyState
+        title="Prime opens soon"
+        message="Member prices, free delivery and members-only coupons, from ₹99 a month. Plans go live shortly."
+        action={
+          <Link href="/" className={buttonClasses()}>
+            Keep shopping
+          </Link>
+        }
+      />
+    );
+  }
   if (failed && !plans) return <ErrorState title="We couldn't load Prime" message="Check your connection and try again." onRetry={() => window.location.reload()} />;
 
   const active = state?.active === true;

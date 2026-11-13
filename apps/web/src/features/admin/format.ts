@@ -39,20 +39,6 @@ export function formatINRTick(paise: number) {
   return `₹${Math.round(rupees)}`;
 }
 
-/** 128450 → "1.3L", 4200 → "4.2K", 640 → "640" (Indian lakh grouping). */
-export function formatCountCompact(value: number) {
-  const trim = (n: number) => n.toFixed(1).replace(/\.0$/, "");
-  if (value >= 1_00_000) return `${trim(value / 1_00_000)}L`;
-  if (value >= 1_000) return `${trim(value / 1_000)}K`;
-  return String(Math.round(value));
-}
-
-/** 0.143 → "+14.3%", -0.03 → "−3.0%". */
-export function formatChange(ratio: number) {
-  const percent = (Math.abs(ratio) * 100).toFixed(1);
-  return `${ratio > 0 ? "+" : ratio < 0 ? "−" : ""}${percent}%`;
-}
-
 /** 482310 → "4,82,310". */
 export function formatCount(value: number) {
   return COUNT.format(value);

@@ -122,10 +122,3 @@ export function variantInfo(): Promise<Map<string, VariantInfo>> {
 
 export const variantTitle = (info: VariantInfo | undefined) =>
   info ? `${info.productName}${info.label ? ` · ${info.label}` : ""}` : "—";
-
-/** Resets the lookup caches. For tests, and after something the names depend on changed. */
-export function clearLookupCaches() {
-  cache.clear();
-  territoryCache.clear();
-  variantTable = undefined;
-}

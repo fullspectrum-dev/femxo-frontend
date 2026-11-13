@@ -2,6 +2,7 @@ import {
   Activity,
   Bell,
   Building,
+  ClipboardCheck,
   ChartColumn,
   CreditCard,
   LayoutGrid,
@@ -19,7 +20,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-/** The 17 admin modules, in sidebar order. */
+/** The 18 admin modules, in sidebar order. */
 export type ModuleKey =
   | "dashboard"
   | "company"
@@ -32,6 +33,7 @@ export type ModuleKey =
   | "warehouse"
   | "prime"
   | "customers"
+  | "approvals"
   | "orders"
   | "billing"
   | "finance"
@@ -91,6 +93,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "Operations & Finance",
     items: [
       item("orders", "Orders & Delivery", Truck, "order.view"),
+      item("approvals", "Approvals", ClipboardCheck, "approval.view"),
       item("billing", "Billing & Invoices", ReceiptText, "invoice.view"),
       item("finance", "Finance & Wallet", CreditCard, "wallet.view"),
     ],

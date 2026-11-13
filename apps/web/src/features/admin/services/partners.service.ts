@@ -6,7 +6,7 @@ import { dayOf, maskPhone, pageOf, stepsOf } from "./shared";
 import type { LiveService } from "./types";
 
 /*
- * Dealers and sub-dealers against femxo-backend (/dealer, /sub-dealers). The API can create a dealer
+ * Dealers and sub-dealers against femxo-backend (/dealer/dealers, /sub-dealers). The API can create a dealer
  * application and submit it; approval, activation and suspension have no route yet, so those
  * prototype actions are not offered live.
  */
@@ -129,7 +129,7 @@ export const dealersService: LiveService = {
   viewPatch: dealerView,
   createSpec: dealerCreate,
   async list({ q, status, cursor, limit }) {
-    const res = await api.get<{ items: ApiDealer[]; nextCursor: string | null }>("/dealer", { q: usableSearch(q), status, cursor, limit });
+    const res = await api.get<{ items: ApiDealer[]; nextCursor: string | null }>("/dealer/dealers", { q: usableSearch(q), status, cursor, limit });
     const places = await territoryNames(res.items.map((d) => lastOf(d.territoryPath)));
     return pageOf(res.items.map((d) => dealerRow(d, places)), res.nextCursor);
   },
@@ -137,7 +137,7 @@ export const dealersService: LiveService = {
     const choices = await districtChoices();
     const districtId = choices.get(String(values.districtId));
     if (!districtId) throw new Error("Choose a district from the list.");
-    const res = await api.post<{ dealer: ApiDealer }>("/dealer", {
+    const res = await api.post<{ dealer: ApiDealer }>("/dealer/dealers", {
       districtId,
       businessName: String(values.businessName).trim(),
       ownerName: String(values.ownerName).trim(),
@@ -147,7 +147,7 @@ export const dealersService: LiveService = {
   },
   async transition(row) {
     // The API wants the revision that was read, so a change made meanwhile is a conflict, not an overwrite.
-    const res = await api.post<{ dealer: ApiDealer }>(`/dealer/${row.id}/submit`, { rev: Number(row.rev) });
+    const res = await api.post<{ dealer: ApiDealer }>(`/dealer/dealers/${row.id}/submit`, { rev: Number(row.rev) });
     return dealerRow(res.dealer, await territoryNames([lastOf(res.dealer.territoryPath)]));
   },
 };

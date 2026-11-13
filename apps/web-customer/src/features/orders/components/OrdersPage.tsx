@@ -18,9 +18,9 @@ function OrderRow({ order }: { order: OrderSummary }) {
   const status = ORDER_STATUS[order.status];
   return (
     <li>
-      <Link href={`/orders/${order.id}`} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3 shadow-card transition-shadow hover:shadow-raised focus-visible:outline-2 focus-visible:outline-focus">
+      <Link href={`/orders/${order.id}`} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3 transition-colors duration-150 hover:border-primary focus-visible:outline-2 focus-visible:outline-focus">
         <span className="relative size-16 flex-none overflow-hidden rounded-control bg-surface-sunken">
-          <Image src={order.thumbnail} alt="" fill sizes="64px" className="object-cover" />
+          <Image src={order.thumbnail} alt="" fill sizes="64px" className="object-contain p-1" />
         </span>
         <span className="grid min-w-0 flex-1 gap-0.5 text-sm">
           <span className="flex flex-wrap items-center gap-2">

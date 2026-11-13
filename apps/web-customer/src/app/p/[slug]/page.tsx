@@ -116,6 +116,8 @@ export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
 
       <ProductReviews slug={product.slug} initial={reviews} />
       <ProductRail title={t("product.related")} products={related} />
+      {/* Room for the phone add bar, so it never covers the last of the page. */}
+      <div aria-hidden="true" className="h-16 md:hidden" />
     </>
   );
 }

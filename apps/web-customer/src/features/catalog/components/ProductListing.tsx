@@ -12,6 +12,10 @@ import { hasActiveFilters, listingQueryString, parseListingParams, type ListingF
 import { FilterPanel, priceLabel } from "./FilterPanel";
 import { ProductCard } from "./ProductCard";
 
+/** Product grids: the full width, or beside a category rail. */
+export const GRID = "grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+export const GRID_BESIDE_RAIL = "grid grid-cols-2 gap-x-2.5 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5";
+
 const SORT_LABELS: Record<SearchSort, string> = {
   relevance: "Relevance",
   price_asc: "Price: low to high",
@@ -51,7 +55,20 @@ const fromResult = (key: string, result: SearchResult): Loaded => ({
  * rendered on the server: shown as they are until something changes the list,
  * so the browser doesn't build the same cards a second time.
  */
-export function ProductListing({ categorySlug, initial, firstPage, search }: { categorySlug?: string; initial?: SearchResult; firstPage?: ReactNode; search?: SearchApi }) {
+export function ProductListing({
+  categorySlug,
+  initial,
+  firstPage,
+  search,
+  filtersInSheet = false,
+}: {
+  categorySlug?: string;
+  initial?: SearchResult;
+  firstPage?: ReactNode;
+  search?: SearchApi;
+  /** Beside a category rail there is no room for a filter column: filters open in a sheet at every width. */
+  filtersInSheet?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   // Choices show at once and the address catches up, so a click never waits on the navigation.
@@ -141,7 +158,7 @@ export function ProductListing({ categorySlug, initial, firstPage, search }: { c
     return (
       <div role="status" className="grid gap-4">
         <span className="sr-only">Loading products…</span>
-        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4" aria-hidden="true">
+        <ul className={filtersInSheet ? GRID_BESIDE_RAIL : GRID} aria-hidden="true">
           {Array.from({ length: 8 }, (_, index) => (
             <li key={index}>
               <Skeleton className="aspect-[3/4] w-full" />
@@ -170,10 +187,12 @@ export function ProductListing({ categorySlug, initial, firstPage, search }: { c
   const filterPanel = <FilterPanel facets={loaded.facets} filters={filters} onChange={go} onClear={clear} />;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8">
-      <aside aria-label="Filters" className="hidden lg:block">
-        {filterPanel}
-      </aside>
+    <div className={filtersInSheet ? "grid gap-4" : "grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8"}>
+      {filtersInSheet ? null : (
+        <aside aria-label="Filters" className="hidden lg:block">
+          {filterPanel}
+        </aside>
+      )}
 
       <div className="min-w-0" aria-busy={loading}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -181,7 +200,7 @@ export function ProductListing({ categorySlug, initial, firstPage, search }: { c
             {loaded.total} {loaded.total === 1 ? "product" : "products"}
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" className="lg:hidden" onClick={() => setSheetOpen(true)}>
+            <Button variant="secondary" size="sm" className={filtersInSheet ? undefined : "lg:hidden"} onClick={() => setSheetOpen(true)}>
               <SlidersHorizontal size={16} aria-hidden="true" />
               Filters{activeCount > 0 ? ` (${activeCount})` : ""}
             </Button>
@@ -244,7 +263,7 @@ export function ProductListing({ categorySlug, initial, firstPage, search }: { c
             {showFirstPage ? (
               <div className={`transition-opacity ${loading ? "opacity-60" : ""}`}>{firstPage}</div>
             ) : (
-              <ul className={`grid grid-cols-2 gap-3 transition-opacity md:grid-cols-3 xl:grid-cols-4 ${loading ? "opacity-60" : ""}`}>
+              <ul className={`${filtersInSheet ? GRID_BESIDE_RAIL : GRID} transition-opacity ${loading ? "opacity-60" : ""}`}>
                 {loaded.items.map((product, index) => (
                   <li key={product.id}>
                     <ProductCard product={product} priority={index < 2} />

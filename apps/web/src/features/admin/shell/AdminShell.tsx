@@ -6,17 +6,17 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { AuthUser } from "@/features/auth";
-import { BOTTOM_NAV, MORE_ICON } from "../nav";
+import { MORE_ICON } from "../nav";
+import { usePanel } from "./PanelContext";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
-import { useAccessSummary } from "./useAccessSummary";
 import { MAX_WIDTH, MIN_WIDTH, RAIL_WIDTH, useSidebarLayout } from "./useSidebarLayout";
 
 /** Layout breakpoints and sidebar behaviour: see useSidebarLayout. */
 export function AdminShell({ user, children }: { user: AuthUser; children: ReactNode }) {
   const pathname = usePathname();
   const layout = useSidebarLayout();
-  const access = useAccessSummary();
+  const { access, panel, to } = usePanel();
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Tablets and desktops expand the pinned sidebar instead; the drawer is for phones.
   const showDrawer = drawerOpen && layout.viewport === "phone";
@@ -114,7 +114,8 @@ export function AdminShell({ user, children }: { user: AuthUser; children: React
 
       <nav aria-label="Primary" className="fx-bottom-nav fixed inset-x-0 bottom-0 z-30 md:hidden">
         <ul className="grid grid-cols-4 gap-2 px-4 py-2">
-          {BOTTOM_NAV.map((item) => {
+          {panel.bottomNav.map((entry) => {
+            const item = { ...entry, href: to(`/admin/${entry.key}`) };
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (

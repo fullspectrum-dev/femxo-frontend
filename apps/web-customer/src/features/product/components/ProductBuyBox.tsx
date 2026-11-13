@@ -5,7 +5,9 @@ import type { ProductsApi } from "@femxo/shared/api";
 import type { Availability, ProductDetail } from "@femxo/shared/contracts";
 import { Badge, Price, QuantityStepper, Rating, cn } from "@femxo/ui";
 import { WishlistButton } from "@/features/wishlist/components/WishlistButton";
+import { formatINR } from "@femxo/shared";
 import { AddToCartButton } from "@/features/cart/components/AddToCartButton";
+import { CardAction } from "@/features/cart/components/CardAction";
 import { useSession } from "@/features/auth/components/SessionProvider";
 import { getProductsApi } from "@/lib/api";
 import { PincodeCheck } from "./PincodeCheck";
@@ -64,7 +66,7 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
             <WishlistButton product={product} className="flex-none border border-line" />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Rating value={product.rating} count={product.ratingCount} />
+            {product.ratingCount > 0 ? <Rating value={product.rating} count={product.ratingCount} /> : null}
             {product.primeExclusive ? <Badge tone="gold">Prime only</Badge> : null}
             {product.badges.map((badge) => (
               <Badge key={badge} tone="primary">
@@ -124,6 +126,19 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
         ) : null}
 
         <PincodeCheck />
+
+        {/* Phones: price and add stay in reach while the shopper scrolls the details. */}
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur md:hidden">
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="truncate text-xs text-ink-muted">{variant.label}</p>
+            <p className="text-lg font-bold tabular-nums">{formatINR(member && variant.primePrice < variant.price ? variant.primePrice : variant.price)}</p>
+          </div>
+          {stock > 0 ? (
+            <CardAction variantId={variant.id} itemName={`${product.name}, ${variant.label}`} className="w-40" />
+          ) : (
+            <span className="text-sm font-semibold text-ink-muted">Out of stock</span>
+          )}
+        </div>
 
         {product.highlights.length > 0 ? (
           <section aria-labelledby="highlights-heading">
