@@ -1,120 +1,73 @@
 import { z } from "zod";
-import { IsoDate, IsoDateTime, MobileNumber, Paise, page } from "./common";
-import { OrderSummary, PaymentIntent } from "./commerce";
+import { IsoDateTime, MobileNumber, Pincode } from "./common";
 
-// ---------- Auth and profile ----------
+// ---------- Auth and profile (femxo-backend /store/v1/auth/* and /me) ----------
 
+export const PrimeStatus = z.enum(["none", "active", "expired"]);
+export type PrimeStatus = z.infer<typeof PrimeStatus>;
+
+/** The signed-in customer, as `GET /me` returns it. The phone is the identity and cannot change. */
 export const Customer = z.object({
   id: z.string(),
+  /** 10-digit Indian mobile number. */
+  phone: MobileNumber,
   name: z.string(),
-  mobile: MobileNumber,
-  email: z.email().nullable(),
-  /** Needed for the birthday reward; optional. */
-  birthday: IsoDate.nullable(),
-  isPrime: z.boolean(),
+  email: z.string().nullable(),
+  addressLine: z.string().nullable(),
+  pincode: z.string().nullable(),
+  /** The government location the customer is served from; null until `PUT /me/location`. */
+  locationId: z.string().nullable(),
+  prime: z.object({ status: PrimeStatus, until: IsoDateTime.nullable() }),
+  createdAt: IsoDateTime,
 });
 export type Customer = z.infer<typeof Customer>;
 
-export const OtpChallenge = z.object({
-  requestId: z.string(),
-  resendAfterSeconds: z.number().int().nonnegative(),
-  expiresInSeconds: z.number().int().positive(),
-});
-export type OtpChallenge = z.infer<typeof OtpChallenge>;
+/** Prime prices apply while the membership is active and not past its end (same rule as the backend's tier). */
+export const isPrimeMember = (customer: Pick<Customer, "prime"> | null | undefined, now = new Date()): boolean =>
+  customer?.prime.status === "active" && (!customer.prime.until || new Date(customer.prime.until) > now);
 
-export const Session = z.object({
-  accessToken: z.string().min(1),
-  expiresIn: z.number().int().positive(),
-  user: Customer,
-  /** A first-time mobile number: signup must collect a name before shopping. */
-  isNewUser: z.boolean(),
-});
+/** `POST /auth/otp/request` answer. The backend says how long the code lives, not how long to wait to resend. */
+export const OtpRequested = z.object({ expiresIn: z.number().int().positive() });
+export type OtpRequested = z.infer<typeof OtpRequested>;
+
+/** An access token with its lifetime; what `/auth/refresh` returns. */
+export const TokenGrant = z.object({ accessToken: z.string().min(1), expiresIn: z.number().int().positive() });
+export type TokenGrant = z.infer<typeof TokenGrant>;
+
+/** A signed-in session: the grant plus the customer. */
+export const Session = TokenGrant.extend({ user: Customer });
 export type Session = z.infer<typeof Session>;
 
-export const ProfileUpdate = z.object({
-  name: z.string().trim().min(2).max(60).optional(),
-  email: z.email().nullable().optional(),
-  birthday: IsoDate.nullable().optional(),
+/** The raw bodies of verify and signup, before the customer is attached. */
+export const VerifySignedIn = TokenGrant.extend({ status: z.literal("signed_in"), customer: Customer });
+export const VerifySignupRequired = z.object({
+  status: z.literal("signup_required"),
+  /** One-use proof that this phone was verified; valid as long as a code is. */
+  signupToken: z.string().min(1),
+  expiresIn: z.number().int().positive(),
 });
+export const VerifyResponse = z.discriminatedUnion("status", [VerifySignedIn, VerifySignupRequired]);
+export const SignupResponse = TokenGrant.extend({ customer: Customer });
+export const CustomerEnvelope = z.object({ customer: Customer });
+
+/** What verifying a code leads to: signed in, or a new customer who must give a name first. */
+export type VerifyOutcome = { status: "signed_in"; session: Session } | { status: "signup_required"; signupToken: string; expiresIn: number };
+
+export const ProfileUpdate = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    email: z.email().max(200).nullable().optional(),
+  })
+  .refine((update) => Object.keys(update).length > 0, { message: "Nothing to change" });
 export type ProfileUpdate = z.infer<typeof ProfileUpdate>;
 
-// ---------- Prime ----------
-
-export const PrimePlan = z.object({
-  id: z.string(),
-  name: z.string(),
-  price: Paise,
-  durationDays: z.number().int().positive(),
-  benefits: z.array(z.string()),
+/** `PUT /me/location`: where the customer is served from. `locationId` looks like `village:64f1...`. */
+export const LocationInput = z.object({
+  locationId: z.string().regex(/^[a-z_]{3,20}:[A-Za-z0-9_-]{1,32}$/),
+  addressLine: z.string().trim().min(1).max(300).optional(),
+  pincode: Pincode.optional(),
 });
-export type PrimePlan = z.infer<typeof PrimePlan>;
-
-export const Membership = z.object({
-  memberId: z.string(),
-  plan: PrimePlan,
-  startedAt: IsoDateTime,
-  validTill: IsoDateTime,
-  /** Encoded in the QR on the membership card. */
-  qrPayload: z.string(),
-});
-export type Membership = z.infer<typeof Membership>;
-
-/** Whether the customer is a member now, and their card (also kept after it lapses, for renewing). */
-export const MembershipStatus = z.object({ membership: Membership.nullable(), active: z.boolean() });
-export type MembershipStatus = z.infer<typeof MembershipStatus>;
-
-export const Coupon = z.object({
-  code: z.string(),
-  label: z.string(),
-  kind: z.enum(["flat", "percent"]),
-  /** Paise for flat coupons, basis points for percent ones. */
-  value: z.number().int().positive(),
-  maxDiscount: Paise.nullable(),
-  minCart: Paise,
-  primeOnly: z.boolean(),
-  validTill: IsoDateTime,
-});
-export type Coupon = z.infer<typeof Coupon>;
-
-export const Referral = z.object({
-  code: z.string(),
-  link: z.string(),
-  invited: z.number().int().nonnegative(),
-  joined: z.number().int().nonnegative(),
-  rewardsEarned: Paise,
-});
-export type Referral = z.infer<typeof Referral>;
-
-export const BirthdayReward = z.object({ coupon: Coupon, message: z.string() });
-export type BirthdayReward = z.infer<typeof BirthdayReward>;
-
-export const PrimePurchase = z.object({ order: OrderSummary, intent: PaymentIntent });
-export type PrimePurchase = z.infer<typeof PrimePurchase>;
-
-// ---------- Reviews (read-only: writing reviews is out of scope) ----------
-
-export const Review = z.object({
-  id: z.string(),
-  author: z.string(),
-  rating: z.number().int().min(1).max(5),
-  title: z.string(),
-  body: z.string(),
-  createdAt: IsoDateTime,
-  verifiedPurchase: z.boolean(),
-});
-export type Review = z.infer<typeof Review>;
-
-export const ReviewSummary = z.object({
-  average: z.number().min(0).max(5),
-  count: z.number().int().nonnegative(),
-  /** Counts for 1★ … 5★. */
-  histogram: z.tuple([z.number().int(), z.number().int(), z.number().int(), z.number().int(), z.number().int()]),
-});
-export type ReviewSummary = z.infer<typeof ReviewSummary>;
-
-/** A page of a product's reviews, newest first, with the summary over all of them. */
-export const ReviewList = page(Review).extend({ summary: ReviewSummary });
-export type ReviewList = z.infer<typeof ReviewList>;
+export type LocationInput = z.infer<typeof LocationInput>;
 
 // ---------- Support ----------
 

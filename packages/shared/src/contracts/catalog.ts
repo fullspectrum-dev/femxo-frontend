@@ -25,6 +25,8 @@ export const VariantBase = z.object({
   primePrice: Paise,
   gstBps: z.number().int().nonnegative(),
   stock: z.number().int().nonnegative(),
+  /** False when the catalogue does not publish stock: `stock` is then only an ordering ceiling, not a count. */
+  stockKnown: z.boolean().optional(),
   maxPerOrder: z.number().int().positive(),
   /** Nearest unexpired batch; null for non-perishables. */
   bestBefore: IsoDate.nullable(),
@@ -96,3 +98,10 @@ export type Availability = z.infer<typeof Availability>;
 /** A customer's saved products, newest first. */
 export const Wishlist = z.object({ items: z.array(ProductSummary).max(200) });
 export type Wishlist = z.infer<typeof Wishlist>;
+
+/** Catalogue details for ids the backend's own answers (cart, orders, wishlist) carry without names or pictures. */
+export const CatalogLookup = z.object({
+  products: z.array(ProductSummary),
+  variants: z.record(z.string(), z.object({ productId: z.string(), variant: Variant })),
+});
+export type CatalogLookup = z.infer<typeof CatalogLookup>;

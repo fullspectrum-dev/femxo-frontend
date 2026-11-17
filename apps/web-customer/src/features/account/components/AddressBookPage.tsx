@@ -3,19 +3,36 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { isApiError } from "@femxo/shared/api";
+import { userMessage } from "@femxo/shared/api";
 import type { AddressApi } from "@femxo/shared/api";
-import type { Address, AddressInput } from "@femxo/shared/contracts";
+import type { Address, AddressBook as Book, AddressInput } from "@femxo/shared/contracts";
 import { Badge, Button, Dialog, ErrorState, Skeleton, useToast } from "@femxo/ui";
 import { AddressForm } from "@/features/addresses/components/AddressForm";
 import { RequireCustomer } from "@/features/auth/components/Guards";
 import { getAddressApi } from "@/lib/api";
 
-function Book({ api }: { api?: AddressApi }) {
+/** One address as a few readable lines (shared with checkout). */
+export function AddressLines({ address }: { address: Pick<Address, "name" | "phone" | "line1" | "line2" | "landmark" | "pincode"> }) {
+  return (
+    <div className="grid gap-0.5 text-sm">
+      <p className="font-semibold">{address.name}</p>
+      <p>
+        {address.line1}
+        {address.line2 ? `, ${address.line2}` : ""}
+      </p>
+      {address.landmark ? <p className="text-ink-muted">Near {address.landmark}</p> : null}
+      <p className="text-ink-muted">
+        Pincode {address.pincode} · +91 {address.phone}
+      </p>
+    </div>
+  );
+}
+
+function AddressBookView({ api }: { api?: AddressApi }) {
   const apiRef = useRef(api);
   const client = () => (apiRef.current ??= getAddressApi());
   const toast = useToast();
-  const [book, setBook] = useState<Address[] | null>(null);
+  const [book, setBook] = useState<Book | null>(null);
   const [failed, setFailed] = useState(false);
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [deleting, setDeleting] = useState<Address | null>(null);
@@ -36,29 +53,33 @@ function Book({ api }: { api?: AddressApi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function save(input: AddressInput, id: string | null) {
-    setBook(id ? await client().update(id, input) : await client().create(input));
+  async function save(input: AddressInput, id: string | null, key: string) {
+    if (id) await client().update(id, input);
+    else await client().create(input, key);
+    // A new default (or the first address) moves the others, so the whole book is read again.
+    setBook(await client().list());
     setEditing(null);
     toast(id ? "Address updated" : "Address added");
   }
 
   async function makeDefault(entry: Address) {
     try {
-      // The server reads only the address fields, so the id riding along is ignored.
-      setBook(await client().update(entry.id, { ...entry, isDefault: true }));
+      await client().setDefault(entry.id);
+      setBook(await client().list());
       toast("Default address changed");
     } catch (error) {
-      toast(isApiError(error) ? error.message : "We couldn't change that. Please try again.", { tone: "error" });
+      toast(userMessage(error, "We couldn't change that. Please try again."), { tone: "error" });
     }
   }
 
   async function remove() {
     if (!deleting) return;
     try {
-      setBook(await client().remove(deleting.id));
+      await client().remove(deleting.id);
+      setBook(await client().list());
       toast("Address deleted");
     } catch (error) {
-      toast(isApiError(error) ? error.message : "We couldn't delete that. Please try again.", { tone: "error" });
+      toast(userMessage(error, "We couldn't delete that. Please try again."), { tone: "error" });
     }
     setDeleting(null);
   }
@@ -73,32 +94,26 @@ function Book({ api }: { api?: AddressApi }) {
       </div>
     );
   }
+  const full = book.max !== undefined && book.items.length >= book.max;
 
   return (
     <div className="grid gap-4">
       <ul className="grid gap-3">
-        {book.map((entry) =>
+        {book.items.map((entry) =>
           editing === entry.id ? (
             <li key={entry.id} className="rounded-card border border-primary bg-surface p-4">
-              <AddressForm initial={entry} onSave={(input) => save(input, entry.id)} onCancel={() => setEditing(null)} />
+              <AddressForm initial={entry} onSave={(input, key) => save(input, entry.id, key)} onCancel={() => setEditing(null)} />
             </li>
           ) : (
-            <li key={entry.id} className="flex items-start justify-between gap-3 rounded-card border border-line bg-surface p-4">
-              <div className="grid gap-0.5 text-sm">
-                <p className="flex flex-wrap items-center gap-2 font-semibold">
-                  {entry.name}
+            <li key={entry.id} data-testid="address" className="flex items-start justify-between gap-3 rounded-card border border-line bg-surface p-4">
+              <div className="grid gap-1">
+                <p className="flex flex-wrap items-center gap-2">
+                  {entry.label ? <Badge tone="neutral">{entry.label}</Badge> : null}
                   {entry.isDefault ? <Badge tone="primary">Default</Badge> : null}
                 </p>
-                <p>
-                  {entry.line1}
-                  {entry.line2 ? `, ${entry.line2}` : ""}
-                </p>
-                <p className="text-ink-muted">
-                  {entry.city}, {entry.district}, Bihar {entry.pincode}
-                </p>
-                <p className="text-ink-muted">+91 {entry.mobile}</p>
+                <AddressLines address={entry} />
                 {!entry.isDefault ? (
-                  <button type="button" onClick={() => void makeDefault(entry)} aria-label={`Make default: ${entry.name}, ${entry.line1}`} className="mt-1 w-max font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus">
+                  <button type="button" onClick={() => void makeDefault(entry)} aria-label={`Make default: ${entry.name}, ${entry.line1}`} className="mt-1 w-max text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus">
                     Make default
                   </button>
                 ) : null}
@@ -118,12 +133,14 @@ function Book({ api }: { api?: AddressApi }) {
         )}
       </ul>
 
-      {book.length === 0 && editing !== "new" ? <p className="text-sm text-ink-muted">You haven&apos;t saved an address yet.</p> : null}
+      {book.items.length === 0 && editing !== "new" ? <p className="text-sm text-ink-muted">You haven&apos;t saved an address yet.</p> : null}
 
       {editing === "new" ? (
         <div className="rounded-card border border-primary bg-surface p-4">
-          <AddressForm onSave={(input) => save(input, null)} onCancel={() => setEditing(null)} />
+          <AddressForm onSave={(input, key) => save(input, null, key)} onCancel={() => setEditing(null)} />
         </div>
+      ) : full ? (
+        <p className="text-sm text-ink-muted">Your address book is full ({book.max}). Delete one to add another.</p>
       ) : (
         <Button variant="secondary" className="w-max" onClick={() => setEditing("new")}>
           <Plus size={16} aria-hidden="true" />
@@ -135,7 +152,7 @@ function Book({ api }: { api?: AddressApi }) {
         open={deleting !== null}
         onClose={() => setDeleting(null)}
         title="Delete this address?"
-        description={deleting ? `${deleting.line1}, ${deleting.city}` : undefined}
+        description={deleting ? `${deleting.line1}, ${deleting.pincode}` : undefined}
         footer={
           <>
             <Button variant="ghost" onClick={() => setDeleting(null)}>
@@ -164,7 +181,7 @@ export function AddressBookPage({ api }: { api?: AddressApi }) {
       </p>
       <h1 className="mb-4 font-display text-2xl font-bold">Your addresses</h1>
       <RequireCustomer>
-        <Book api={api} />
+        <AddressBookView api={api} />
       </RequireCustomer>
     </section>
   );

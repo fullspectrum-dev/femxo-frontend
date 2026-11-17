@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito_Sans, Rubik } from "next/font/google";
+import localFont from "next/font/local";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { OfflineBanner, ToastProvider, themeInitScript } from "@femxo/ui";
-import { BirthdayBanner } from "@/features/prime/components/BirthdayBanner";
 import { CartBar } from "@/features/cart/components/CartBar";
 import { CartProvider } from "@/features/cart/components/CartProvider";
 import { WishlistProvider } from "@/features/wishlist/components/WishlistProvider";
@@ -14,16 +14,19 @@ import { Header } from "@/features/shell/components/Header";
 import "./globals.css";
 import { ICONS } from "./icons";
 import { t } from "@/i18n";
+import { ALLOW_INDEXING, SITE_URL } from "@/lib/site";
 
 // The ui-ux-pro-max e-commerce pairing: Rubik for headings and prices, Nunito Sans for reading.
-const display = Rubik({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-rubik", display: "swap" });
-const body = Nunito_Sans({ subsets: ["latin"], variable: "--font-nunito", display: "swap" });
+// Self-hosted variable fonts (OFL, Latin subset): no request to Google, nothing for a CSP to allow but 'self'.
+const display = localFont({ src: "./fonts/rubik-latin.woff2", variable: "--font-rubik", display: "swap", weight: "300 900" });
+const body = localFont({ src: "./fonts/nunito-sans-latin.woff2", variable: "--font-nunito", display: "swap", weight: "200 1000" });
 
 export const metadata: Metadata = {
+  ...(SITE_URL ? { metadataBase: new URL(SITE_URL) } : {}),
   title: { default: "Femxo", template: "%s | Femxo" },
   description: "Shop staples, daily needs and Prime deals from Femxo across Bihar.",
-  // Not public yet: keep the placeholder out of search until launch.
-  robots: { index: false, follow: false },
+  // Indexing is switched on per environment (NEXT_PUBLIC_ALLOW_INDEXING=true in production only).
+  robots: ALLOW_INDEXING ? { index: true, follow: true } : { index: false, follow: false },
   icons: ICONS,
 };
 
@@ -36,11 +39,19 @@ export const viewport: Viewport = {
   ],
 };
 
+/** The theme script needs this request's CSP nonce (set by proxy.ts), so it is read per request. */
+async function ThemeScript() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  return <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />;
+}
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Suspense fallback={null}>
+          <ThemeScript />
+        </Suspense>
       </head>
       {/* Bottom padding keeps content clear of the phone bottom bar. */}
       <body className="flex min-h-dvh flex-col bg-canvas pb-[calc(3.5rem+env(safe-area-inset-bottom))] font-sans text-ink antialiased md:pb-0">
@@ -60,7 +71,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                   <CategoryNavLoader />
                 </Suspense>
                 <OfflineBanner />
-                <BirthdayBanner />
                 <main id="main" tabIndex={-1} className="flex-1 outline-none">
                   {children}
                 </main>

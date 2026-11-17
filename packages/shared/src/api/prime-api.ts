@@ -1,21 +1,23 @@
 import { z } from "zod";
-import { BirthdayReward, Coupon, MembershipStatus, PrimePlan, PrimePurchase, Referral } from "../contracts/people";
+import { PrimeMembership, PrimePlan, PrimePurchase } from "../contracts/commerce";
 import type { ApiAdapter } from "./adapter";
+import { STORE_BASE } from "./auth-api";
 import { request } from "./request";
 
-/** PrimeApi: plans, joining, the member's card and their perks. */
+const Plans = z.object({ items: z.array(PrimePlan) });
+
+/** PrimeApi: plans, the customer's membership, and buying (the payment itself is Razorpay Checkout, like an order's). */
 export function createPrimeApi(adapter: ApiAdapter) {
   return {
     /** Public. */
-    plans: () => request(adapter, { method: "GET", path: "/prime/plans" }, z.array(PrimePlan)),
-    membership: (signal?: AbortSignal) => request(adapter, { method: "GET", path: "/prime/membership", signal }, MembershipStatus),
-    /** Starts a payment for the plan; the customer becomes a member when it succeeds (PaymentApi.confirm). */
-    purchase: (planId: string) => request(adapter, { method: "POST", path: "/prime/purchase", body: { planId } }, PrimePurchase),
-    /** 403 FORBIDDEN for non-members, on this and the next. */
-    coupons: () => request(adapter, { method: "GET", path: "/prime/coupons" }, z.array(Coupon)),
-    referral: () => request(adapter, { method: "GET", path: "/prime/referral" }, Referral),
-    /** Null unless it is the member's birthday and their plan includes the reward. */
-    birthday: () => request(adapter, { method: "GET", path: "/prime/birthday" }, BirthdayReward.nullable()),
+    plans: async (signal?: AbortSignal) => (await request(adapter, { method: "GET", path: `${STORE_BASE}/membership/plans`, signal }, Plans)).items,
+    membership: (signal?: AbortSignal) => request(adapter, { method: "GET", path: `${STORE_BASE}/membership/current`, signal }, PrimeMembership),
+    /**
+     * Creates the payment for a plan (the price is the plan's, on the server). The same `idempotencyKey` returns the same
+     * payment, so keep one per attempt and reuse it on retry. Prime starts when the payment is captured, not when this returns.
+     */
+    purchase: (planId: string, idempotencyKey: string) =>
+      request(adapter, { method: "POST", path: `${STORE_BASE}/membership/purchase`, body: { planId, idempotencyKey } }, PrimePurchase),
   };
 }
 

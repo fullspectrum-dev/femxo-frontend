@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { clearOfflineQueues } from "@/lib/offline-storage";
 import { authApi } from "../services/auth-api";
 import type { AuthUser } from "../types/auth";
 
@@ -22,7 +23,12 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>("checking");
   const [user, setUser] = useState<AuthUser | null>(null);
 
+  const lastUserId = useRef<string | null>(null);
+
   const apply = useCallback((next: AuthUser | null) => {
+    // Session ended, or someone else signed in: the previous person's offline work must not carry over.
+    if (lastUserId.current && lastUserId.current !== (next?.id ?? null)) clearOfflineQueues();
+    lastUserId.current = next?.id ?? null;
     setUser(next);
     setStatus(next ? "signed-in" : "signed-out");
     return next;
@@ -49,6 +55,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       signIn: async (email, password) => apply(await authApi.login(email, password))!,
       signOut: async () => {
         await authApi.logout().catch(() => undefined);
+        clearOfflineQueues();
         apply(null);
       },
       reloadUser: async () => apply(await authApi.restoreSession()),
@@ -65,7 +72,21 @@ export function useAuthSession() {
   return context;
 }
 
-/** Where to go after sign-in: the `next` param if it's a local path, else the account page. */
+/**
+ * Where to go after sign-in: the `next` param if it is a path on this site, else the fallback.
+ * Rejects protocol-relative (`//host`), backslash (`/\host`) and control-character tricks
+ * (browsers strip tabs and newlines, so a tab between two slashes becomes `//host`).
+ */
+const UNSAFE = /[\\\u0000-\u001f\u007f]/;
 export function safeNextPath(next: string | null | undefined, fallback = "/account") {
-  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : fallback;
+  if (!next || !next.startsWith("/") || UNSAFE.test(next)) return fallback;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(next);
+  } catch {
+    return fallback;
+  }
+  // "/%09/evil.com" decodes to a tab between the slashes, which a browser reads as "//evil.com".
+  if (UNSAFE.test(decoded) || decoded.replace(/\s/g, "").startsWith("//")) return fallback;
+  return next;
 }

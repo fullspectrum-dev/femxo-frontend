@@ -20,6 +20,12 @@ export function formatINR(paise: number) {
   return `₹${RUPEES.format(Math.round(paise / 100))}`;
 }
 
+/** Like formatINR but keeps the paise when there are any: 9950 → "₹99.50", 12400000 → "₹1,24,000". For payments and refunds, where a rounded rupee would mislead. */
+export function formatINRExact(paise: number) {
+  const whole = paise % 100 === 0;
+  return `₹${new Intl.NumberFormat("en-IN", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 }).format(paise / 100)}`;
+}
+
 /** 186000000000 → "₹18.6 Cr", 4280000000 → "₹42.8 L"; smaller amounts in full. */
 export function formatINRCompact(paise: number) {
   const rupees = paise / 100;

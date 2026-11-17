@@ -15,7 +15,7 @@ const label = (count: number, more: boolean) => (count > 0 ? (more ? `${count}+`
 /**
  * The gold "waiting" counts in the sidebar, read from the API: work that sits until someone acts.
  * Warehouse counts transfers not yet dispatched or not yet received; Approvals counts pending
- * requests; Orders counts return requests waiting for a decision. Each count is fetched on its own,
+ * requests; Orders counts return requests waiting for a decision; Payments counts flagged payments; Reviews counts reviews waiting to be moderated. Each count is fetched on its own,
  * so a missing permission hides only that badge. No made-up number is ever shown.
  */
 export function useNavBadges(pathname: string): Badges {
@@ -46,6 +46,20 @@ export function useNavBadges(pathname: string): Badges {
         () =>
           api
             .get<{ items: unknown[]; nextCursor: string | null }>("/delivery/returns", { status: "requested", limit: PAGE })
+            .then(({ items, nextCursor }) => label(items.length, nextCursor !== null)),
+      ],
+      [
+        "payments",
+        () =>
+          api
+            .get<{ items: unknown[]; nextCursor: string | null }>("/payments", { flagged: "true", limit: PAGE })
+            .then(({ items, nextCursor }) => label(items.length, nextCursor !== null)),
+      ],
+      [
+        "reviews",
+        () =>
+          api
+            .get<{ items: unknown[]; nextCursor: string | null }>("/reviews", { status: "pending", limit: PAGE })
             .then(({ items, nextCursor }) => label(items.length, nextCursor !== null)),
       ],
     ];

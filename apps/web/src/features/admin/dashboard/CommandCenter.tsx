@@ -28,6 +28,7 @@ import { territoryNames } from "../services/lookups";
 import { totalsOf } from "./LiveDashboard";
 import { usePanel } from "../shell/PanelContext";
 import type { DashboardTotals } from "./LiveDashboard";
+import { DataHealth } from "./DataHealth";
 
 /*
  * The command center: what the network sold, what is on the road right now, and every piece of
@@ -280,6 +281,7 @@ export function CommandCenter() {
         </Card>
       ) : null}
       {snapshot ? <Board snapshot={snapshot} /> : null}
+      {snapshot ? <DataHealth held={held} tick={tick} /> : null}
     </div>
   );
 }

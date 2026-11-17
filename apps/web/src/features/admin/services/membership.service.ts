@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, idempotencyKey } from "@/lib/api";
 import type { RecordRow } from "../data/records";
 import type { CreateSpec } from "../modules/types";
 import { dayOf, pageOf } from "./shared";
@@ -34,10 +34,65 @@ export function subscriptionRow(s: ApiSubscription): RecordRow {
   };
 }
 
+/** Plan label → id for the subscribe form, and the idempotency key of the form now open (a retried submit sells once). */
+let planChoices = new Map<string, string>();
+let saleKey = "";
+
+const subscribeCreate: CreateSpec = {
+  label: "Subscribe customer",
+  title: "Sell Prime membership",
+  description: "Records a Prime sale for a customer in your territory. There is no payment gateway: enter the receipt or transaction number you were given.",
+  fields: [
+    {
+      name: "customer",
+      label: "Customer mobile or ID",
+      kind: "text",
+      required: true,
+      placeholder: "10-digit mobile",
+      pattern: { regex: /^((\+?91[\s-]?|0)?[6-9]\d{9}|[0-9a-fA-F]{24})$/, message: "Enter the customer's 10-digit mobile number or their 24-character ID." },
+    },
+    { name: "plan", label: "Plan", kind: "select", required: true, options: [] },
+    { name: "paymentRef", label: "Payment reference", kind: "text", required: true, helper: "Receipt or UPI transaction number, 3–100 characters.", pattern: { regex: /^.{3,100}$/, message: "Use 3 to 100 characters." } },
+  ],
+  status: "active",
+  toRow: (v) => v,
+  toast: () => "Prime membership sold.",
+  async prepare() {
+    const res = await api.get<{ items: { id: string; name: string; pricePaise: number; durationDays: number }[] }>("/membership/plans", { status: "active" });
+    planChoices = new Map(res.items.map((p) => [`${p.name} · ₹${(p.pricePaise / 100).toLocaleString("en-IN")} · ${p.durationDays} days`, p.id]));
+    saleKey = idempotencyKey();
+    return { plan: [...planChoices.keys()] };
+  },
+};
+
+async function customerIdOf(text: string): Promise<string> {
+  if (/^[0-9a-f]{24}$/i.test(text)) return text;
+  const phone = text.replace(/[\s-]/g, "").replace(/^(\+91|91|0)(?=\d{10}$)/, "");
+  const res = await api.get<{ items: { id: string }[] }>("/customers", { phone, limit: 1 });
+  const found = res.items[0];
+  if (!found) throw new Error("No customer with that mobile number in your territory. Register them under Customers first");
+  return found.id;
+}
+
 export const subscriptionsService: LiveService = {
+  canCreate: true,
+  createSpec: subscribeCreate,
+  async create(values) {
+    const planId = planChoices.get(String(values.plan));
+    if (!planId) throw new Error("Choose a plan from the list");
+    const res = await api.post<{ subscription: ApiSubscription; replayed: boolean }>("/membership/subscriptions", {
+      customerId: await customerIdOf(String(values.customer).trim()),
+      planId,
+      paymentRef: String(values.paymentRef).trim(),
+      idempotencyKey: saleKey || idempotencyKey(),
+    });
+    saleKey = "";
+    return subscriptionRow(res.subscription);
+  },
   actions: ["cancel"],
-  searchPlaceholder: "Filter the subscriptions on this page…",
+  searchPlaceholder: "Payment reference (starts with)",
   viewPatch: {
+    dateRange: true,
     searchKeys: ["customer", "plan", "paymentRef"],
     columns: [
       { key: "customer", header: "Customer ID", primary: true, sub: "plan" },
@@ -73,10 +128,17 @@ export const subscriptionsService: LiveService = {
       },
     ],
   },
-  async list({ status, cursor, limit }) {
-    const res = await api.get<{ items: ApiSubscription[]; nextCursor: string | null }>("/membership/subscriptions", { cursor, limit });
-    // The API has no status filter here; narrow the loaded page.
-    return pageOf(res.items.map(subscriptionRow).filter((r) => !status || r.status === status), res.nextCursor);
+  async list({ q, status, cursor, limit, from, to }) {
+    // The API filters by status, the start of the payment reference, and the days started.
+    const res = await api.get<{ items: ApiSubscription[]; nextCursor: string | null }>("/membership/subscriptions", {
+      status: status || undefined,
+      q: q?.trim() || undefined,
+      from: from || undefined,
+      to: to || undefined,
+      cursor,
+      limit,
+    });
+    return pageOf(res.items.map(subscriptionRow), res.nextCursor);
   },
   async transition(row, _key, _to, context) {
     const res = await api.post<{ subscription: ApiSubscription }>(`/membership/subscriptions/${row.id}/cancel`, {

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { StatusBadge, isStatusKey } from "@/components/admin-ui";
 import type { Cell, RecordRow } from "../data/records";
-import { formatCount, formatDate, formatDateTime, formatINR, formatPercentBps } from "../format";
+import { formatCount, formatDate, formatDateTime, formatINR, formatINRExact, formatPercentBps } from "../format";
 import type { CellFormat, ColumnSpec } from "./types";
 
 export function formatCell(value: Cell | undefined, format: CellFormat = "text"): ReactNode {
@@ -11,6 +11,8 @@ export function formatCell(value: Cell | undefined, format: CellFormat = "text")
       return typeof value === "string" && isStatusKey(value) ? <StatusBadge status={value} /> : String(value);
     case "inr":
       return typeof value === "number" ? formatINR(value) : value;
+    case "inr2":
+      return typeof value === "number" ? formatINRExact(value) : value;
     case "count":
       return typeof value === "number" ? formatCount(value) : value;
     case "units":

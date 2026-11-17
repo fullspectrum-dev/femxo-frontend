@@ -3,7 +3,7 @@ import { PrimePage } from "@/features/prime/components/PrimePage";
 
 export const metadata: Metadata = {
   title: "Femxo Prime",
-  description: "Prime prices on everything, free delivery on every order and member-only coupons.",
+  description: "Member prices on the Femxo store.",
 };
 
 export default function Prime() {

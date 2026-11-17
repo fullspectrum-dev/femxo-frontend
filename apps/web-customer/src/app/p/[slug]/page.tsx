@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { cacheLife } from "next/cache";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { ChevronRight } from "lucide-react";
 import { ProductRail } from "@/features/catalog/components/ProductRail";
 import { ProductBuyBox } from "@/features/product/components/ProductBuyBox";
@@ -18,7 +20,10 @@ async function getProductPage(slug: string) {
   if (slug === "_") return null;
   const api = serverProducts();
   try {
-    const [product, related, reviews] = await Promise.all([api.detail(slug), api.related(slug), api.reviews(slug)]);
+    const [detail, related] = await Promise.all([api.detail(slug), api.related(slug)]);
+    // Reviews are looked up by the product's id. A failure here only means "no reviews shown yet": the page itself is fine.
+    const reviews = await api.reviews(detail.id).catch(() => null);
+    const product = reviews ? { ...detail, rating: reviews.summary.average, ratingCount: reviews.summary.count } : detail;
     return { product, related, reviews };
   } catch (error) {
     if (typeof error === "object" && error !== null && "status" in error && error.status === 404) return null;
@@ -51,6 +56,12 @@ export async function generateMetadata({ params }: PageProps<"/p/[slug]">): Prom
   };
 }
 
+/** JSON-LD carrying this request's CSP nonce (set by proxy.ts). */
+async function JsonLd({ data }: { data: unknown }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  return <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }} />;
+}
+
 export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
   const { slug } = await params;
   const page = await getProductPage(slug);
@@ -59,7 +70,9 @@ export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)).replace(/</g, "\\u003c") }} />
+      <Suspense fallback={null}>
+        <JsonLd data={productJsonLd(product)} />
+      </Suspense>
       <section className="mx-auto w-full max-w-7xl px-4 py-5">
         <nav aria-label={t("nav.breadcrumb")} className="mb-4 text-sm text-ink-muted">
           <ol className="flex flex-wrap items-center gap-1">
@@ -114,7 +127,7 @@ export default async function ProductPage({ params }: PageProps<"/p/[slug]">) {
         </div>
       </section>
 
-      <ProductReviews slug={product.slug} initial={reviews} />
+      <ProductReviews productId={product.id} productName={product.name} initial={reviews} />
       <ProductRail title={t("product.related")} products={related} />
       {/* Room for the phone add bar, so it never covers the last of the page. */}
       <div aria-hidden="true" className="h-16 md:hidden" />

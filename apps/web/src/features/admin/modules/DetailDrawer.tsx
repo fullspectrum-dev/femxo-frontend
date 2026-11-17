@@ -3,8 +3,11 @@
 import { Info } from "lucide-react";
 import { Badge, Button, Drawer, StatusBadge, Timeline } from "@/components/admin-ui";
 import type { RecordRow } from "../data/records";
+import { usePanel } from "../shell/PanelContext";
+import { allowed } from "./allowed";
 import { formatCell } from "./cells";
 import type { ActionSpec, ViewSpec } from "./types";
+
 
 /**
  * Detail drawer: the record's fields, its workflow timeline, and only the
@@ -17,6 +20,7 @@ export function DetailDrawer({
   onClose,
   onAction,
   onEdit,
+  onChanged,
 }: {
   view: ViewSpec;
   row: RecordRow | null;
@@ -25,8 +29,13 @@ export function DetailDrawer({
   onAction: (action: ActionSpec, row: RecordRow) => void;
   /** Opens the edit form; only used when the view has one (live mode). */
   onEdit?: (row: RecordRow) => void;
+  /** Called when the view's `extra` section changed the record. */
+  onChanged?: () => void;
 }) {
-  const actions = row ? (view.actions ?? []).filter((action) => action.from.includes(row.status)) : [];
+  const { access } = usePanel();
+  const Extra = view.extra;
+  const canEdit = Boolean(row && view.edit && onEdit && (!view.edit.when || view.edit.when(row)));
+  const actions = row ? (view.actions ?? []).filter((action) => action.from.includes(row.status) && allowed(access, action)) : [];
   const note = row ? view.note?.(row) : null;
 
   return (
@@ -37,12 +46,12 @@ export function DetailDrawer({
       subtitle={row ? view.subtitle?.(row) : undefined}
       badge={row && view.statuses.length ? <StatusBadge status={row.status} /> : undefined}
       footer={
-        row ? (
+        row && !view.noFooter ? (
           view.readOnly ? (
             <p className="mr-auto self-center text-[13px] fx-muted">Read-only record. It can&rsquo;t be edited or deleted.</p>
           ) : (
             <>
-              {view.edit && onEdit ? (
+              {canEdit && onEdit ? (
                 <Button variant="secondary" disabled={busy} onClick={() => onEdit(row)}>
                   Edit
                 </Button>
@@ -52,7 +61,7 @@ export function DetailDrawer({
                   {action.label}
                 </Button>
               ))}
-              {!actions.length && !view.edit ? <p className="mr-auto self-center text-[13px] fx-muted">No actions available in this state.</p> : null}
+              {!actions.length && !canEdit ? <p className="mr-auto self-center text-[13px] fx-muted">No actions available in this state.</p> : null}
             </>
           )
         ) : null
@@ -82,6 +91,8 @@ export function DetailDrawer({
               <Timeline label={view.timeline.label} steps={view.timeline.steps(row)} />
             </section>
           ) : null}
+
+          {Extra ? <Extra key={row.id} row={row} onChanged={onChanged ?? (() => undefined)} /> : null}
 
           {view.readOnly ? (
             <Badge tone="neutral" plain className="w-max">

@@ -7,7 +7,7 @@ import type { FormEvent } from "react";
 import { isApiError } from "@femxo/shared/api";
 import type { OrdersApi, SupportApi } from "@femxo/shared/api";
 import { TicketInput } from "@femxo/shared/contracts";
-import type { OrderSummary, Ticket } from "@femxo/shared/contracts";
+import type { Order, Ticket } from "@femxo/shared/contracts";
 import { Badge, Button, EmptyState, ErrorState, Skeleton, TextField, useToast } from "@femxo/ui";
 import type { BadgeTone } from "@femxo/ui";
 import { RequireCustomer } from "@/features/auth/components/Guards";
@@ -35,7 +35,7 @@ type Errors = Partial<Record<"subject" | "category" | "orderId" | "message" | "f
 function NewRequest({ support, orders, onSent, onCancel }: { support: () => SupportApi; orders: () => OrdersApi; onSent: () => void; onCancel: () => void }) {
   const toast = useToast();
   const [values, setValues] = useState({ subject: "", category: "order" as Ticket["category"], orderId: "", message: "" });
-  const [recent, setRecent] = useState<OrderSummary[]>([]);
+  const [recent, setRecent] = useState<Order[]>([]);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
 
@@ -92,7 +92,7 @@ function NewRequest({ support, orders, onSent, onCancel }: { support: () => Supp
           <option value="">Not about a particular order</option>
           {recent.map((order) => (
             <option key={order.id} value={order.id}>
-              {order.number} · {DATE.format(new Date(order.placedAt))}
+              {order.orderNumber} · {DATE.format(new Date(order.placedAt))}
             </option>
           ))}
         </Select>

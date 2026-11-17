@@ -2,7 +2,7 @@
 # Build from the repo root (the pnpm workspace):
 #
 #   docker build -t femxo-frontend \
-#     --build-arg FEMXO_API_ORIGIN=http://api:3000 .
+#     --build-arg FEMXO_API_ORIGIN=http://api:3000 \n#     --build-arg NEXT_PUBLIC_STORE_URL=https://shop.femxo.in .
 #   docker run -p 3001:3001 femxo-frontend
 #
 # FEMXO_API_ORIGIN and NEXT_PUBLIC_* are read at build time (rewrites and
@@ -16,11 +16,15 @@ FROM base AS deps
 # Workspace manifests first, so dependency layers stay cached across code changes.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
+COPY packages/shared/package.json packages/shared/
+COPY packages/ui/package.json packages/ui/
 RUN pnpm install --frozen-lockfile --filter @femxo/web...
 
 FROM base AS build
-ARG FEMXO_API_ORIGIN=http://localhost:3000
+# No default: the build refuses to run without the API's address (see apps/web/next.config.ts).
+ARG FEMXO_API_ORIGIN
 ARG NEXT_PUBLIC_API_BASE_URL=
+ARG NEXT_PUBLIC_STORE_URL=
 ENV FEMXO_API_ORIGIN=$FEMXO_API_ORIGIN \
     NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_PUBLIC_AUTH_DEMO_MODE=$NEXT_PUBLIC_AUTH_DEMO_MODE \
@@ -44,5 +48,5 @@ COPY --from=build --chown=node:node /app/apps/web/public ./apps/web/public
 USER node
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- "http://127.0.0.1:${PORT}/" > /dev/null || exit 1
+  CMD wget -qO- "http://127.0.0.1:${PORT}/healthz" > /dev/null || exit 1
 CMD ["node", "apps/web/server.js"]

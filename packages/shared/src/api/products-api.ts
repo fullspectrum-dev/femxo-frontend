@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { Availability, Brand, Category, HomeContent, ProductDetail, ProductSummary } from "../contracts/catalog";
+import { Availability, Brand, CatalogLookup, Category, HomeContent, ProductDetail, ProductSummary } from "../contracts/catalog";
 import { page } from "../contracts/common";
-import { Serviceability } from "../contracts/commerce";
-import { ReviewList } from "../contracts/people";
+import { Review, ReviewList, type ReviewInput } from "../contracts/commerce";
 import type { SearchQueryInput } from "../contracts/search";
 import type { ApiAdapter, QueryValue } from "./adapter";
+import { STORE_BASE } from "./auth-api";
 import { request } from "./request";
 
 /** A search/filter query as URL query values (arrays repeat the key; empty values are left out). */
@@ -34,14 +34,22 @@ export function createProductsApi(adapter: ApiAdapter) {
     detail: (slug: string) => request(adapter, { method: "GET", path: `/catalog/products/${encodeURIComponent(slug)}` }, ProductDetail),
     related: (slug: string) =>
       request(adapter, { method: "GET", path: `/catalog/products/${encodeURIComponent(slug)}/related` }, z.array(ProductSummary)),
-    reviews: (slug: string, cursor?: string) =>
-      request(adapter, { method: "GET", path: `/catalog/products/${encodeURIComponent(slug)}/reviews`, query: { cursor } }, ReviewList),
+    /** Published reviews of a product (by its id) with the rating summary. Public. */
+    reviews: (productId: string, cursor?: string, signal?: AbortSignal) =>
+      request(adapter, { method: "GET", path: `${STORE_BASE}/products/${encodeURIComponent(productId)}/reviews`, query: { cursor, limit: 10 }, signal }, ReviewList),
+    /** Needs a delivered order of this product (403 NOT_A_BUYER), one per customer (409 REVIEW_EXISTS). Staff publish it before it shows. */
+    submitReview: async (productId: string, input: ReviewInput) =>
+      (await request(adapter, { method: "POST", path: `${STORE_BASE}/products/${encodeURIComponent(productId)}/reviews`, body: input }, z.object({ review: Review.passthrough() }))).review,
+    /** Names, pictures and packs for variant and product ids (the cart, orders and wishlist carry ids only). */
+    lookup: ({ variantIds = [], productIds = [] }: { variantIds?: readonly string[]; productIds?: readonly string[] }) =>
+      request(
+        adapter,
+        { method: "GET", path: "/catalog/lookup", query: { variantIds: variantIds.length ? variantIds.join(",") : undefined, productIds: productIds.length ? productIds.join(",") : undefined } },
+        CatalogLookup
+      ),
     /** Live stock and the price for the signed-in tier, to refresh a prerendered page. */
     availability: (slug: string, signal?: AbortSignal) =>
       request(adapter, { method: "GET", path: `/catalog/products/${encodeURIComponent(slug)}/availability`, signal }, z.array(Availability)),
-    /** Whether (and how fast) we deliver to a pincode. An unserviceable pincode is an answer, not an error. */
-    serviceability: (pincode: string, signal?: AbortSignal) =>
-      request(adapter, { method: "GET", path: `/delivery/serviceability/${encodeURIComponent(pincode)}`, signal }, Serviceability),
   };
 }
 

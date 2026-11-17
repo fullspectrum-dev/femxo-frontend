@@ -15,3 +15,7 @@ packageExtensions:
   eslint-config-next:
     peerDependencies:
       next: "*"
+
+# fast-uri < 3.1.9 has known advisories; force a patched version for every dependent.
+overrides:
+  fast-uri: "^3.1.9"

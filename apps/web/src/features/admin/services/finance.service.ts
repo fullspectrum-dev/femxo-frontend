@@ -1,5 +1,6 @@
-import { api } from "@/lib/api";
+import { api, idempotencyKey } from "@/lib/api";
 import type { RecordRow } from "../data/records";
+import { userNames } from "./lookups";
 import { dayOf, pageOf, stepsOf } from "./shared";
 import type { LiveService } from "./types";
 
@@ -15,6 +16,8 @@ interface ApiWallet {
   id: string;
   ownerType: "dealer" | "sub_dealer";
   ownerId: string;
+  /** In every list item since 2026-11; absent on an older API (the balance then shows a dash). */
+  balances?: ApiBalances | null;
 }
 interface ApiBalances {
   spendable: number;
@@ -24,7 +27,7 @@ interface ApiBalances {
 
 const OWNER_LABEL = { dealer: "Dealer", sub_dealer: "Sub-dealer" } as const;
 
-export function walletRow(wallet: ApiWallet, balances: ApiBalances | null): RecordRow {
+export function walletRow(wallet: ApiWallet, balances: ApiBalances | null = wallet.balances ?? null): RecordRow {
   return {
     id: wallet.id,
     partner: wallet.ownerId,
@@ -59,13 +62,8 @@ export const walletsService: LiveService = {
   },
   async list({ q, cursor, limit }) {
     const res = await api.get<{ items: ApiWallet[]; nextCursor: string | null }>("/wallets", { cursor, limit });
-    // The list carries no balances; one read per wallet on the page (a page is small).
-    const rows = await Promise.all(
-      res.items.map(async (wallet) => {
-        const detail = await api.get<{ balances: ApiBalances | null }>(`/wallets/${wallet.id}`).catch(() => null);
-        return walletRow(wallet, detail?.balances ?? null);
-      })
-    );
+    // Each list item carries its balances, so a page is one call.
+    const rows = res.items.map((wallet) => walletRow(wallet));
     const needle = q?.trim().toLowerCase();
     return pageOf(rows.filter((r) => !needle || [r.partner, r.kind].some((v) => String(v).toLowerCase().includes(needle))), res.nextCursor);
   },
@@ -101,13 +99,24 @@ export function payoutRow(p: ApiPayout): RecordRow {
   };
 }
 
+/** The payout list's filters as the API wants them. Both owner types ticked (or none) means no owner filter. */
+export function payoutQuery(f: { q?: string; status?: string; flags?: readonly string[]; from?: string; to?: string }) {
+  const types = (f.flags ?? []).filter((flag) => flag === "dealer" || flag === "sub_dealer");
+  return { status: f.status || undefined, ownerType: types.length === 1 ? types[0] : undefined, q: f.q?.trim() || undefined, from: f.from || undefined, to: f.to || undefined };
+}
+
 const PAYOUT_STEPS = ["Requested", "Approved", "Paid"] as const;
 
 export const payoutsService: LiveService = {
   actions: ["approve", "reject"],
-  searchPlaceholder: "Filter the payouts on this page…",
+  searchPlaceholder: "Owner ID (starts with)",
   viewPatch: {
     label: "Payouts",
+    dateRange: true,
+    filters: [
+      { key: "dealer", label: "Dealers" },
+      { key: "sub_dealer", label: "Sub-dealers" },
+    ],
     entity: "payout",
     searchKeys: ["code", "partner", "note"],
     columns: [
@@ -176,17 +185,73 @@ export const payoutsService: LiveService = {
     ],
     empty: { title: "No payouts", message: "Payouts appear when a dealer or sub-dealer asks to withdraw from a wallet." },
   },
-  async list({ q, status, cursor, limit }) {
-    const res = await api.get<{ items: ApiPayout[]; nextCursor: string | null }>("/finance/payouts", { status, cursor, limit });
-    const needle = q?.trim().toLowerCase();
-    const rows = res.items
-      .map(payoutRow)
-      .filter((r) => !needle || [r.code, r.partner, r.note].some((v) => String(v).toLowerCase().includes(needle)));
-    return pageOf(rows, res.nextCursor);
+  async list({ q, status, cursor, limit, flags, from, to }) {
+    const res = await api.get<{ items: ApiPayout[]; nextCursor: string | null }>("/finance/payouts", { ...payoutQuery({ q, status, flags, from, to }), cursor, limit });
+    return pageOf(res.items.map(payoutRow), res.nextCursor);
   },
   async transition(row, actionKey, _to, context) {
     const body = actionKey === "reject" ? { reason: context?.reason ?? "Rejected from the admin panel" } : {};
-    const res = await api.post<{ payout: ApiPayout }>(`/finance/payouts/${row.id}/${actionKey}`, body);
+    // The API refuses an approve or reject without an Idempotency-Key (a retry must not decide twice).
+    const res = await api.post<{ payout: ApiPayout }>(`/finance/payouts/${row.id}/${actionKey}`, body, { "Idempotency-Key": idempotencyKey() });
     return payoutRow(res.payout);
+  },
+};
+
+// ---------- Bank account changes (maker-checker, then a hold before payouts start) ----------
+
+interface MaskedAccount {
+  ifsc: string;
+  last4: string;
+  holderName: string;
+}
+interface ApiAccountChange {
+  id: string;
+  ownerType: "dealer" | "sub_dealer";
+  ownerId: string;
+  status: "pending" | "approved" | "rejected";
+  requested: MaskedAccount;
+  current: MaskedAccount | null;
+  requestedBy: string;
+  requestedAt: string;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  reason: string | null;
+  activeFrom: string | null;
+}
+
+const maskedText = (a: MaskedAccount | null) => (a ? `${a.holderName} · ${a.ifsc} · ••••${a.last4}` : "None (first account)");
+const people = () => userNames().catch(() => new Map<string, string>());
+
+export function accountChangeRow(c: ApiAccountChange, who: Map<string, string>): RecordRow {
+  return {
+    id: c.id,
+    partner: c.ownerId,
+    kind: OWNER_LABEL[c.ownerType],
+    requested: maskedText(c.requested),
+    current: maskedText(c.current),
+    requestedBy: who.get(c.requestedBy) ?? "—",
+    requestedAt: c.requestedAt,
+    decidedBy: c.decidedBy ? (who.get(c.decidedBy) ?? "—") : null,
+    decidedAt: c.decidedAt,
+    reason: c.reason,
+    activeFrom: c.activeFrom,
+    status: c.status,
+  };
+}
+
+export const payoutAccountChangesService: LiveService = {
+  actions: ["approve", "reject"],
+  searchPlaceholder: "Filter the changes on this page…",
+  async list({ q, status, cursor, limit }) {
+    const res = await api.get<{ items: ApiAccountChange[]; nextCursor: string | null }>("/finance/payout-account-changes", { status, cursor, limit });
+    const who = await people();
+    const needle = q?.trim().toLowerCase();
+    const rows = res.items.map((c) => accountChangeRow(c, who)).filter((r) => !needle || [r.partner, r.requested, r.requestedBy].some((v) => String(v).toLowerCase().includes(needle)));
+    return pageOf(rows, res.nextCursor);
+  },
+  async transition(row, actionKey, _to, context) {
+    const body = actionKey === "reject" ? { reason: context?.reason ?? "" } : {};
+    const res = await api.post<{ change: ApiAccountChange }>(`/finance/payout-account-changes/${row.id}/${actionKey}`, body, { "Idempotency-Key": idempotencyKey() });
+    return accountChangeRow(res.change, await people());
   },
 };

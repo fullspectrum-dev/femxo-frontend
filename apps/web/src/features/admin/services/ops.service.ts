@@ -1,3 +1,4 @@
+import { authApi } from "@/features/auth";
 import { api, idempotencyKey } from "@/lib/api";
 import type { RecordRow } from "../data/records";
 import type { CreateSpec } from "../modules/types";
@@ -46,6 +47,34 @@ export function reportRow(j: ApiReportJob): RecordRow {
   };
 }
 
+/**
+ * The permission each queued report needs (the backend's REPORT_PERMISSIONS). The sales reports read orders, so their permission
+ * is taken from GET /reports/types (the `orders` entry) when it answers; membership and profit are not listed there.
+ */
+const REPORT_NEEDS: Record<string, string> = {
+  "dealer-performance": "orders",
+  "territory-sales": "orders",
+  "village-sales": "orders",
+  "subdealer-performance": "orders",
+  "product-performance": "orders",
+  membership: "membership.view",
+  profit: "finance.report.view",
+};
+
+/** The reports the signed-in user may request: GET /reports/types plus their own permissions (GET /access/me). */
+async function reportChoices(): Promise<string[]> {
+  const [types, access] = await Promise.all([
+    api.get<{ reports: { id: string; permission: string }[] }>("/reports/types").catch(() => ({ reports: [] })),
+    authApi.access().catch(() => null),
+  ]);
+  const listed = new Map(types.reports.map((r) => [r.id, r.permission]));
+  const held = (permission: string) => !access || access.isSuperAdmin || access.permissions.includes(permission);
+  const allowed = Object.entries(REPORT_LABEL)
+    .filter(([type]) => held(REPORT_NEEDS[type] === "orders" ? (listed.get("orders") ?? "order.view") : (REPORT_NEEDS[type] ?? "")))
+    .map(([, label]) => label);
+  return allowed.length ? allowed : [...labelToType.keys()];
+}
+
 const DATE = { regex: /^\d{4}-\d{2}-\d{2}$/, message: "Use the form 2026-11-01." };
 const reportCreate: CreateSpec = {
   label: "Request report",
@@ -58,6 +87,7 @@ const reportCreate: CreateSpec = {
     { name: "format", label: "Format", kind: "select", required: true, options: ["CSV", "PDF"] },
   ],
   validate: (v) => (v.from && v.to && v.from > v.to ? { to: "The end date can't be before the start date." } : {}),
+  prepare: async () => ({ report: await reportChoices() }),
   status: "queued",
   toRow: (v) => v,
   toast: (v) => `"${v.report}" queued. You'll be notified when it's ready.`,
@@ -219,7 +249,7 @@ export const deadLettersService: LiveService = {
     return pageOf(rows, null);
   },
   async transition(row) {
-    await api.post(`/admin/dead-letters/${row.id}/retry`, {});
+    await api.post(`/admin/dead-letters/${encodeURIComponent(row.id)}/retry`, {});
     return { ...row, status: "retried" };
   },
 };

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
+  Checkbox,
   ComingSoon,
   ConfirmActionDialog,
   DataTable,
@@ -16,13 +17,15 @@ import {
   useToast,
 } from "@/components/admin-ui";
 import type { Column, SortState } from "@/components/admin-ui";
-import { ApiRefusal, applyAction, forMode, hasBackend, listRecords } from "../data/api";
+import { applyAction, forMode, hasBackend, listRecords } from "../data/api";
 import type { Page } from "../data/api";
+import { describeError } from "../data/error-messages";
 import type { RecordRow } from "../data/records";
 import { CreateDialog, EditDialog } from "./CreateDialog";
 import { DetailDrawer } from "./DetailDrawer";
 import { renderColumn } from "./cells";
 import { amountOf, getModule } from "./registry";
+import { rupeesToPaise } from "../services/payments.mappers";
 import { usePanel } from "../shell/PanelContext";
 import type { ActionSpec, ModuleSpec, ViewSpec } from "./types";
 
@@ -99,7 +102,9 @@ export function ModulePage({ moduleKey }: { moduleKey: ModuleSpec["key"] }) {
         role={spec.views.length > 1 ? "tabpanel" : undefined}
         aria-labelledby={spec.views.length > 1 ? `${tabsId}-tab-${view.key}` : undefined}
       >
-        {hasBackend(view.dataset) ? (
+        {view.custom ? (
+          <view.custom key={view.key} />
+        ) : hasBackend(view.dataset) ? (
           <ViewPanel
             key={view.key}
             view={view}
@@ -136,6 +141,9 @@ function ViewPanel({
   const pageSize = view.pageSize ?? DEFAULT_PAGE_SIZE;
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState<Query>({ q: "", status: "", sort: undefined });
+  const [flags, setFlags] = useState<string[]>([]);
+  const [range, setRange] = useState<{ from: string; to: string }>({ from: "", to: "" });
+  const [amounts, setAmounts] = useState<{ min: string; max: string }>({ min: "", max: "" });
   // Cursor stack: the last entry is the current page; popping goes back.
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
   const [reload, setReload] = useState(0);
@@ -146,8 +154,11 @@ function ViewPanel({
   const [busy, setBusy] = useState(false);
 
   const cursor = cursors.at(-1) ?? null;
-  const requestKey = JSON.stringify([view.dataset, query, cursor, reload]);
+  const requestKey = JSON.stringify([view.dataset, query, cursor, reload, flags, range, amounts]);
   const loading = result.key !== requestKey;
+  const reversed = Boolean(range.from && range.to && range.from > range.to);
+  const minPaise = rupeesToPaise(amounts.min);
+  const maxPaise = rupeesToPaise(amounts.max);
 
   // Debounce typing so each keystroke doesn't fire a request.
   useEffect(() => {
@@ -163,7 +174,7 @@ function ViewPanel({
     let active = true;
     listRecords(
       view.dataset,
-      { q: query.q, status: query.status || undefined, cursor, limit: pageSize }
+      { q: query.q, status: query.status || undefined, cursor, limit: pageSize, flags, from: reversed ? undefined : range.from || undefined, to: reversed ? undefined : range.to || undefined, minPaise: minPaise ?? undefined, maxPaise: maxPaise ?? undefined }
     )
       .then((page) => {
         if (!active) return;
@@ -175,7 +186,7 @@ function ViewPanel({
     return () => {
       active = false;
     };
-  }, [requestKey, view, query, cursor, pageSize]);
+  }, [requestKey, view, query, cursor, pageSize, flags, range, reversed, minPaise, maxPaise]);
 
   const columns = useMemo<Column<RecordRow>[]>(
     () =>
@@ -185,31 +196,22 @@ function ViewPanel({
         sortable: column.sortable,
         primary: column.primary,
         hideOnMobile: column.hideOnMobile,
-        align: column.format === "inr" || column.format === "count" || column.format === "units" ? "right" : "left",
+        align: column.format === "inr" || column.format === "inr2" || column.format === "count" || column.format === "units" ? "right" : "left",
         render: (row: RecordRow) => renderColumn(column, row),
       })),
     [view]
   );
 
-  async function run(action: ActionSpec, row: RecordRow, reason?: string) {
+  async function run(action: ActionSpec, row: RecordRow, reason?: string, picked?: string) {
     setPending(null);
     setBusy(true);
     try {
-      const updated = await applyAction(view.dataset, row, action, reason);
+      const updated = await applyAction(view.dataset, row, action, reason, picked);
       setSelected(updated);
       setReload((n) => n + 1);
       toast(action.toast(updated));
     } catch (error) {
-      toast(
-        error instanceof ApiRefusal && error.code === "INVALID_TRANSITION"
-          ? error.message
-            ? `${error.message.replace(/\.$/, "")}. Nothing was changed.`
-            : "This record changed meanwhile. Refreshed with the latest state."
-          : error instanceof ApiRefusal && error.code === "FORBIDDEN" && error.message
-            ? `${error.message.replace(/\.$/, "")}. Nothing was changed.`
-            : "Couldn't apply the action. Nothing was changed.",
-        "error"
-      );
+      toast(`${describeError(error, "Couldn't apply the action.").replace(/\.$/, "")}. Nothing was changed.`, "error");
       setReload((n) => n + 1);
     } finally {
       setBusy(false);
@@ -218,10 +220,33 @@ function ViewPanel({
 
   const page = result.page;
   const from = (cursors.length - 1) * pageSize + 1;
-  const isFiltered = Boolean(query.q || query.status);
+  const isFiltered = Boolean(query.q || query.status || flags.length || range.from || range.to || amounts.min || amounts.max);
+  const rangeInvalid = reversed;
+  const Banner = view.banner;
 
   return (
     <>
+      {Banner ? (
+        <div className="mb-4">
+          <Banner from={reversed ? undefined : range.from || undefined} to={reversed ? undefined : range.to || undefined} />
+        </div>
+      ) : null}
+      {view.filters?.length ? (
+        <div className="mb-3 flex flex-wrap gap-4" role="group" aria-label={`${view.label} filters`}>
+          {view.filters.map((filter) => (
+            <Checkbox
+              key={filter.key}
+              checked={flags.includes(filter.key)}
+              onChange={(on) => {
+                setFlags((current) => (on ? [...current, filter.key] : current.filter((key) => key !== filter.key)));
+                setCursors([null]);
+              }}
+            >
+              {filter.label}
+            </Checkbox>
+          ))}
+        </div>
+      ) : null}
       <DataTable<RecordRow>
         label={view.label}
         columns={columns}
@@ -248,6 +273,31 @@ function ViewPanel({
           setCursors([null]);
         }}
         onView={setSelected}
+        toolbarExtra={
+          view.dateRange || view.amountRange ? (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {view.dateRange ? (
+                <DateRange
+                  value={range}
+                  invalid={rangeInvalid}
+                  onChange={(next) => {
+                    setRange(next);
+                    setCursors([null]);
+                  }}
+                />
+              ) : null}
+              {view.amountRange ? (
+                <AmountRange
+                  value={amounts}
+                  onChange={(next) => {
+                    setAmounts(next);
+                    setCursors([null]);
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : undefined
+        }
         empty={
           isFiltered ? (
             <EmptyState title="No matches" message="Try a different search or status filter." />
@@ -288,6 +338,7 @@ function ViewPanel({
         onClose={() => setSelected(null)}
         onAction={(action, row) => (action.confirm ? setPending({ action, row }) : void run(action, row))}
         onEdit={view.edit ? setEditing : undefined}
+        onChanged={() => setReload((n) => n + 1)}
       />
 
       {view.edit && editing ? (
@@ -314,8 +365,9 @@ function ViewPanel({
           record={view.recordName(pending.row)}
           confirmLabel={pending.action.confirm.confirmLabel}
           reason={pending.action.confirm.reason}
+          pick={pickFor(pending.action.confirm.pick, pending.row)}
           onClose={() => setPending(null)}
-          onConfirm={(reason) => void run(pending.action, pending.row, reason)}
+          onConfirm={(reason, picked) => void run(pending.action, pending.row, reason, picked)}
         />
       ) : null}
 
@@ -334,5 +386,50 @@ function ViewPanel({
         />
       ) : null}
     </>
+  );
+}
+
+/** The confirm dialog loads its options without a row; bind the one being acted on. */
+function pickFor(pick: NonNullable<NonNullable<ActionSpec["confirm"]>["pick"]> | undefined, row: RecordRow) {
+  return pick ? { label: pick.label, options: () => pick.options(row) } : undefined;
+}
+
+/** First and last day (India-time days, both included). A reversed range is flagged and not sent. */
+function DateRange({ value, invalid, onChange }: { value: { from: string; to: string }; invalid: boolean; onChange: (value: { from: string; to: string }) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Date range">
+      <label className="flex items-center gap-1.5 text-[12px] fx-muted">
+        From
+        <input type="date" className="fx-input" aria-label="From date" value={value.from} max={value.to || undefined} onChange={(e) => onChange({ ...value, from: e.target.value })} />
+      </label>
+      <label className="flex items-center gap-1.5 text-[12px] fx-muted">
+        To
+        <input type="date" className="fx-input" aria-label="To date" value={value.to} min={value.from || undefined} onChange={(e) => onChange({ ...value, to: e.target.value })} />
+      </label>
+      {value.from || value.to ? (
+        <button type="button" className="text-[12px] underline" onClick={() => onChange({ from: "", to: "" })}>
+          Clear dates
+        </button>
+      ) : null}
+      {invalid ? <span className="fx-field-error" role="alert">The first day is after the last day.</span> : null}
+    </div>
+  );
+}
+
+/** Smallest and largest amount in rupees. Text that isn't an amount is ignored, with a hint. */
+function AmountRange({ value, onChange }: { value: { min: string; max: string }; onChange: (value: { min: string; max: string }) => void }) {
+  const bad = (text: string) => text.trim() !== "" && rupeesToPaise(text) === null;
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Amount range">
+      <label className="flex items-center gap-1.5 text-[12px] fx-muted">
+        Min ₹
+        <input inputMode="decimal" className="fx-input w-[96px]" aria-label="Smallest amount in rupees" value={value.min} onChange={(e) => onChange({ ...value, min: e.target.value })} />
+      </label>
+      <label className="flex items-center gap-1.5 text-[12px] fx-muted">
+        Max ₹
+        <input inputMode="decimal" className="fx-input w-[96px]" aria-label="Largest amount in rupees" value={value.max} onChange={(e) => onChange({ ...value, max: e.target.value })} />
+      </label>
+      {bad(value.min) || bad(value.max) ? <span className="fx-field-error" role="alert">Use a plain amount like 1500 or 99.50.</span> : null}
+    </div>
   );
 }

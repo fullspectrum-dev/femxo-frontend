@@ -1,38 +1,40 @@
 "use client";
 
-import Image from "next/image";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatINR } from "@femxo/shared";
 import type { OrdersApi } from "@femxo/shared/api";
-import type { OrderSummary } from "@femxo/shared/contracts";
+import type { Order } from "@femxo/shared/contracts";
 import { Badge, Button, buttonClasses, EmptyState, ErrorState, Skeleton, Tabs } from "@femxo/ui";
 import { RequireCustomer } from "@/features/auth/components/Guards";
 import { getOrdersApi } from "@/lib/api";
-import { ORDER_FILTERS, ORDER_STATUS, PAYMENT_STATUS } from "../status";
+import { describeOrder, ORDER_FILTERS, paymentLine } from "../status";
 import type { OrderFilterKey } from "../status";
 
 const DATE = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
-function OrderRow({ order }: { order: OrderSummary }) {
-  const status = ORDER_STATUS[order.status];
+function OrderRow({ order }: { order: Order }) {
+  const status = describeOrder(order);
   return (
     <li>
-      <Link href={`/orders/${order.id}`} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3 transition-colors duration-150 hover:border-primary focus-visible:outline-2 focus-visible:outline-focus">
-        <span className="relative size-16 flex-none overflow-hidden rounded-control bg-surface-sunken">
-          <Image src={order.thumbnail} alt="" fill sizes="64px" className="object-contain p-1" />
-        </span>
-        <span className="grid min-w-0 flex-1 gap-0.5 text-sm">
+      <Link
+        href={`/orders/${order.id}`}
+        data-testid="order-row"
+        className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 transition-colors duration-150 hover:border-primary focus-visible:outline-2 focus-visible:outline-focus"
+      >
+        <span className="grid min-w-0 flex-1 gap-1 text-sm">
           <span className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">Order {order.number}</span>
+            <span className="font-semibold">Order {order.orderNumber}</span>
             <Badge tone={status.tone}>{status.label}</Badge>
           </span>
           <span className="text-ink-muted">
             Placed {DATE.format(new Date(order.placedAt))} · {order.itemCount} {order.itemCount === 1 ? "item" : "items"}
           </span>
-          <span className="text-ink-muted">{PAYMENT_STATUS[order.paymentStatus]}</span>
+          <span className="text-ink-muted">{paymentLine(order)}</span>
         </span>
-        <span className="flex-none text-right font-bold">{formatINR(order.total)}</span>
+        <span className="flex-none text-right font-bold tabular-nums">{formatINR(order.totalPaise)}</span>
+        <ChevronRight size={18} className="flex-none text-ink-muted" aria-hidden="true" />
       </Link>
     </li>
   );
@@ -40,18 +42,18 @@ function OrderRow({ order }: { order: OrderSummary }) {
 
 function OrderList({ filter, api }: { filter: OrderFilterKey; api?: OrdersApi }) {
   const apiRef = useRef(api);
-  const [items, setItems] = useState<OrderSummary[]>([]);
+  const [items, setItems] = useState<Order[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [more, setMore] = useState(false);
 
-  const statuses = ORDER_FILTERS.find((entry) => entry.key === filter)?.statuses;
+  const status = ORDER_FILTERS.find((entry) => entry.key === filter)?.status;
 
   const load = useCallback(
     async (after?: string) => {
       const client = (apiRef.current ??= getOrdersApi());
       try {
-        const result = await client.list({ status: statuses, cursor: after });
+        const result = await client.list({ status, cursor: after });
         setItems((current) => (after ? [...current, ...result.items] : result.items));
         setCursor(result.nextCursor);
         setState("ready");
@@ -61,7 +63,7 @@ function OrderList({ filter, api }: { filter: OrderFilterKey; api?: OrdersApi })
         setMore(false);
       }
     },
-    [statuses]
+    [status]
   );
 
   useEffect(() => {
@@ -70,10 +72,20 @@ function OrderList({ filter, api }: { filter: OrderFilterKey; api?: OrdersApi })
     void load();
   }, [load]);
 
-  if (state === "error") return <ErrorState title="We couldn't load your orders" message="Check your connection and try again." onRetry={() => { setState("loading"); void load(); }} />;
+  if (state === "error")
+    return (
+      <ErrorState
+        title="We couldn't load your orders"
+        message="Check your connection and try again."
+        onRetry={() => {
+          setState("loading");
+          void load();
+        }}
+      />
+    );
   if (state === "loading") {
     return (
-      <div role="status" className="grid gap-3">
+      <div role="status" className="grid gap-3 pt-4">
         <span className="sr-only">Loading your orders…</span>
         {[0, 1, 2].map((n) => (
           <Skeleton key={n} className="h-24 w-full" />
@@ -95,7 +107,7 @@ function OrderList({ filter, api }: { filter: OrderFilterKey; api?: OrdersApi })
     );
   }
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 pt-4">
       <ul className="grid gap-3">
         {items.map((order) => (
           <OrderRow key={order.id} order={order} />

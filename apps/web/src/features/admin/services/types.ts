@@ -14,6 +14,13 @@ export interface LiveListQuery {
   status?: string;
   cursor?: string | null;
   limit: number;
+  /** Keys of the view's `filters` that are switched on. */
+  flags?: readonly string[];
+  /** First and last day (YYYY-MM-DD, India time), both included. */
+  from?: string;
+  to?: string;
+  minPaise?: number;
+  maxPaise?: number;
 }
 
 /** What one dataset can do against the real API. Missing methods mean the panel hides that action. */
@@ -24,7 +31,7 @@ export interface LiveService {
   update?(row: RecordRow, values: FormValues, files: File[], removedImageIds: string[]): Promise<RecordRow>;
   editSpec?: EditSpec;
   /** Apply an action. `actionKey` is the registry action's key; throws if the API refuses. */
-  transition?(row: RecordRow, actionKey: string, to: StatusKey, context?: { reason?: string }): Promise<RecordRow>;
+  transition?(row: RecordRow, actionKey: string, to: StatusKey, context?: { reason?: string; picked?: string }): Promise<RecordRow>;
   /** Registry action keys this service can run; others are hidden. */
   actions?: readonly string[];
   /** Whether the create form works against the API. */

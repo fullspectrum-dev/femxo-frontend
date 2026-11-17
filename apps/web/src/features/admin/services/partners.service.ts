@@ -1,14 +1,15 @@
 import { api } from "@/lib/api";
 import type { RecordRow } from "../data/records";
-import type { CreateSpec, ViewSpec } from "../modules/types";
+import { DealerHistory, RegistrationModeCard } from "../modules/extras/DealerExtras";
+import type { CreateSpec, EditSpec, ViewSpec } from "../modules/types";
+import { approverOptions, approversFor } from "./approvers";
 import { lastOf, territoryNames } from "./lookups";
 import { dayOf, maskPhone, pageOf, stepsOf } from "./shared";
 import type { LiveService } from "./types";
 
 /*
- * Dealers and sub-dealers against femxo-backend (/dealer/dealers, /sub-dealers). The API can create a dealer
- * application and submit it; approval, activation and suspension have no route yet, so those
- * prototype actions are not offered live.
+ * Dealers and sub-dealers against femxo-backend (/dealer/dealers, /sub-dealers). Lifecycle: create (draft), submit with an
+ * approver, the approver decides under /approvals, then a Super Admin activates; suspend and reactivate need a reason.
  */
 
 const MOBILE = { regex: /^(\+?91[\s-]?|0)?[6-9]\d{9}$/, message: "Enter a 10-digit mobile number." };
@@ -44,6 +45,7 @@ export function dealerRow(d: ApiDealer, places: Map<string, string>): RecordRow 
     district: places.get(district) ?? district,
     phone: maskPhone(d.mobile),
     joined: dayOf(d.createdAt),
+    path: d.territoryPath.join(","),
     rev: d.rev,
     status: d.status,
   };
@@ -115,19 +117,87 @@ const dealerView: Partial<ViewSpec> = {
   },
   note: (row) =>
     row.status === "submitted"
-      ? "Waiting for approval. The approval and activation steps are not available from the API yet."
+      ? "Waiting for the approver. Find the request under Approvals."
+      : row.status === "approved"
+        ? "Approved. A Super Admin gives the final activation."
       : row.status === "draft"
         ? "A draft can be edited until it is submitted."
         : null,
-  actions: [{ key: "submit", label: "Submit application", from: ["draft"], to: "submitted", variant: "primary", toast: (r) => `${r.name} submitted for review.` }],
+  actions: [
+    {
+      key: "submit", label: "Submit application", from: ["draft"], to: "submitted", variant: "primary",
+      confirm: {
+        kind: "destructive",
+        title: "Submit application",
+        description: "Opens an approval request. The approver you choose decides it; you can't edit the application while it waits.",
+        confirmLabel: "Submit",
+        pick: { label: "Who approves this application?", options: approverChoices },
+      },
+      toast: (r) => `${r.name} submitted for approval.`,
+    },
+    {
+      key: "activate", label: "Activate dealer", from: ["approved"], to: "active", variant: "gold", superAdminOnly: true,
+      confirm: { kind: "financial", title: "Activate dealer", description: "Final step (Super Admin only). The dealer can start trading.", confirmLabel: "Activate" },
+      toast: (r) => `${r.name} is now active.`,
+    },
+    {
+      key: "suspend", label: "Suspend", from: ["active"], to: "suspended", variant: "danger", superAdminOnly: true,
+      confirm: { kind: "destructive", title: "Suspend dealer", description: "No new sub-dealers can be added under a suspended dealer. Super Admin only.", confirmLabel: "Suspend", reason: { label: "Reason for suspending", min: 3 } },
+      toast: (r) => `${r.name} suspended.`,
+    },
+    {
+      key: "reactivate", label: "Reactivate", from: ["suspended"], to: "active", variant: "secondary", superAdminOnly: true,
+      confirm: { kind: "destructive", title: "Reactivate dealer", description: "The dealer can trade again. Super Admin only.", confirmLabel: "Reactivate", reason: { label: "Reason for reactivating", min: 3 } },
+      toast: (r) => `${r.name} reactivated.`,
+    },
+  ],
+  extra: DealerHistory,
+  banner: RegistrationModeCard,
+};
+
+/** What the edit form was filled from (GET /dealer/dealers/:id), so saving sends only what changed with that `rev`. */
+const dealerOriginals = new Map<string, ApiDealer>();
+
+const dealerEdit: EditSpec = {
+  label: "Save changes",
+  title: "Edit dealer application",
+  description: "Only draft and rejected applications can be edited. Editing a rejected one puts it back in draft under the same Dealer ID.",
+  when: (row) => row.status === "draft" || row.status === "rejected",
+  fields: [
+    { name: "businessName", label: "Business name", kind: "text", required: true },
+    { name: "ownerName", label: "Owner name", kind: "text", required: true },
+    { name: "mobile", label: "Mobile number", kind: "tel", required: true, placeholder: "10-digit mobile", pattern: MOBILE },
+    { name: "reason", label: "What changed", kind: "textarea", helper: "Optional. Kept in the application history." },
+  ],
+  async load(row) {
+    const { dealer } = await api.get<{ dealer: ApiDealer }>(`/dealer/dealers/${row.id}`);
+    dealerOriginals.set(dealer.id, dealer);
+    return { values: { businessName: dealer.businessName, ownerName: dealer.ownerName, mobile: dealer.mobile, reason: "" }, images: [] };
+  },
+  toast: (values) => `${values.businessName} saved.`,
 };
 
 export const dealersService: LiveService = {
   canCreate: true,
-  actions: ["submit"],
+  actions: ["submit", "activate", "suspend", "reactivate"],
   searchPlaceholder: "Dealer ID, mobile, or the start of the name (3+ letters)",
   viewPatch: dealerView,
   createSpec: dealerCreate,
+  editSpec: dealerEdit,
+  async update(row, values) {
+    const before = dealerOriginals.get(row.id);
+    if (!before) throw new Error("Close and reopen the form, then try again");
+    const text = (key: string) => String(values[key] ?? "").trim();
+    const digits = (value: string) => value.replace(/[\s-]/g, "").replace(/^(\+91|91|0)(?=\d{10}$)/, "");
+    const patch: Record<string, unknown> = {};
+    if (text("businessName") !== before.businessName) patch.businessName = text("businessName");
+    if (text("ownerName") !== before.ownerName) patch.ownerName = text("ownerName");
+    if (digits(text("mobile")) !== digits(before.mobile)) patch.mobile = text("mobile");
+    if (!Object.keys(patch).length) return row;
+    const res = await api.patch<{ dealer: ApiDealer }>(`/dealer/dealers/${row.id}`, { rev: before.rev, ...patch, ...(text("reason") ? { reason: text("reason") } : {}) });
+    dealerOriginals.delete(row.id);
+    return dealerRow(res.dealer, await territoryNames([lastOf(res.dealer.territoryPath)]));
+  },
   async list({ q, status, cursor, limit }) {
     const res = await api.get<{ items: ApiDealer[]; nextCursor: string | null }>("/dealer/dealers", { q: usableSearch(q), status, cursor, limit });
     const places = await territoryNames(res.items.map((d) => lastOf(d.territoryPath)));
@@ -145,12 +215,25 @@ export const dealersService: LiveService = {
     });
     return dealerRow(res.dealer, await territoryNames([lastOf(res.dealer.territoryPath)]));
   },
-  async transition(row) {
-    // The API wants the revision that was read, so a change made meanwhile is a conflict, not an overwrite.
-    const res = await api.post<{ dealer: ApiDealer }>(`/dealer/dealers/${row.id}/submit`, { rev: Number(row.rev) });
+  async transition(row, actionKey, _to, context) {
+    // Every call carries the revision that was read, so a change made meanwhile is a conflict, not an overwrite.
+    const rev = Number(row.rev);
+    const body =
+      actionKey === "submit"
+        ? { rev, approverId: context?.picked }
+        : actionKey === "activate"
+          ? { rev }
+          : { rev, reason: context?.reason ?? "" };
+    const res = await api.post<{ dealer: ApiDealer }>(`/dealer/dealers/${row.id}/${actionKey}`, body);
     return dealerRow(res.dealer, await territoryNames([lastOf(res.dealer.territoryPath)]));
   },
 };
+
+/** Who can approve this dealer's application: holders of approval.decide in the dealer's district, other than the signed-in user. */
+async function approverChoices(row: RecordRow) {
+  const path = typeof row.path === "string" && row.path ? row.path.split(",") : [];
+  return approverOptions(await approversFor("dealer.application", path));
+}
 
 // ---------- Sub-dealers ----------
 

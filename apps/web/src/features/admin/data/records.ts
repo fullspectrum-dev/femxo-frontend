@@ -27,6 +27,7 @@ export type DatasetKey =
   | "orders"
   | "invoices"
   | "settlements"
+  | "payoutAccountChanges"
   | "wallets"
   | "reports"
   | "deliveries"
@@ -41,4 +42,7 @@ export type DatasetKey =
   | "commissionPlans"
   | "warehouses"
   | "brands"
-  | "categories";
+  | "categories"
+  | "payments"
+  | "refunds"
+  | "reviews";

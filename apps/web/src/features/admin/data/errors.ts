@@ -23,4 +23,11 @@ export interface ListQuery {
   status?: string;
   cursor?: string | null;
   limit: number;
+  flags?: readonly string[];
+  /** First and last day (YYYY-MM-DD, India time) for views with a date range. */
+  from?: string;
+  to?: string;
+  /** Smallest and largest amount in paise, for views with an amount range. */
+  minPaise?: number;
+  maxPaise?: number;
 }

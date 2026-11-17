@@ -1,329 +1,342 @@
 "use client";
 
+import { CheckCircle2, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { formatINR } from "@femxo/shared";
-import { isApiError } from "@femxo/shared/api";
-import type { OrdersApi, PaymentApi } from "@femxo/shared/api";
-import type { OrderDetail, PaymentIntent } from "@femxo/shared/contracts";
-import { Badge, Button, Dialog, ErrorState, Skeleton, TextField, useToast } from "@femxo/ui";
+import { formatINR, idempotencyKey, packArtUrl } from "@femxo/shared";
+import { isApiError, userMessage } from "@femxo/shared/api";
+import type { OrdersApi } from "@femxo/shared/api";
+import type { OrderDetail } from "@femxo/shared/contracts";
+import { Badge, Button, buttonClasses, Dialog, EmptyState, ErrorState, Skeleton, useToast } from "@femxo/ui";
 import { RequireCustomer } from "@/features/auth/components/Guards";
-import { BillSummary } from "@/features/cart/components/BillSummary";
-import { PaymentSheet } from "@/features/payments/components/PaymentSheet";
-import { getOrdersApi, getPaymentApi } from "@/lib/api";
-import { ORDER_STATUS, PAYMENT_STATUS } from "../status";
+import { useCatalogLookup } from "@/features/catalog/useLookup";
+import { PaymentProgress } from "@/features/payments/components/PaymentProgress";
+import { outcomeMessage } from "@/features/payments/outcome-copy";
+import { useOrderPayment } from "@/features/payments/useOrderPayment";
+import type { OrderPayResult } from "@/features/payments/useOrderPayment";
+import { getOrdersApi } from "@/lib/api";
+import { canPay, describeOrder, paymentLine } from "../status";
 import { OrderAgainButton } from "./OrderAgainButton";
 import { OrderTimeline } from "./OrderTimeline";
 
-const DATE = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
-const METHOD: Record<OrderDetail["paymentMethod"], string> = { upi: "UPI", card: "Card", netbanking: "Net banking", cod: "Cash on delivery" };
+const DATE = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+const POLL_MS = 3000;
+const POLL_TRIES = 40;
 
-function CancelDialog({ open, onClose, onConfirm }: { open: boolean; onClose: () => void; onConfirm: () => Promise<void> }) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title="Cancel this order?"
-      description="The items go back on the shelf. If you've already paid, your money is refunded."
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Keep my order
-          </Button>
-          <Button
-            variant="danger"
-            busy={busy}
-            onClick={async () => {
-              setBusy(true);
-              await onConfirm();
-              setBusy(false);
-            }}
-          >
-            Cancel order
-          </Button>
-        </>
-      }
-    >
-      <p className="text-sm">You can&apos;t undo this.</p>
-    </Dialog>
-  );
-}
+type Load = { state: "loading" } | { state: "missing" } | { state: "failed" } | { state: "ready"; detail: OrderDetail };
 
-function ReturnDialog({ order, open, onClose, onSubmit }: { order: OrderDetail; open: boolean; onClose: () => void; onSubmit: (lineIds: string[], reason: string) => Promise<string | null> }) {
-  const [chosen, setChosen] = useState<string[]>([]);
-  const [reason, setReason] = useState("");
-  const [error, setError] = useState<string>();
-  const [busy, setBusy] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (chosen.length === 0) return setError("Choose at least one item to return.");
-    if (reason.trim().length < 3) return setError("Tell us why you're returning it.");
-    setBusy(true);
-    const failure = await onSubmit(chosen, reason.trim());
-    setBusy(false);
-    if (failure) setError(failure);
-  }
-
-  return (
-    <Dialog open={open} onClose={onClose} title="Return items" description={`You can return items until ${order.canReturnUntil ? DATE.format(new Date(order.canReturnUntil)) : "the window closes"}.`}>
-      <form onSubmit={submit} noValidate className="grid gap-4">
-        <fieldset className="grid gap-2">
-          <legend className="mb-1 text-sm font-semibold">Which items?</legend>
-          {order.lines.map((line) => (
-            <label key={line.id} className="flex items-start gap-3 rounded-control border border-line p-3 text-sm has-[:disabled]:opacity-60">
-              <input
-                type="checkbox"
-                disabled={!line.returnable}
-                checked={chosen.includes(line.id)}
-                onChange={(event) => setChosen((current) => (event.target.checked ? [...current, line.id] : current.filter((id) => id !== line.id)))}
-                className="mt-1 size-4 accent-primary"
-              />
-              <span>
-                {line.product.name}, {line.variant.label} × {line.quantity}
-                {!line.returnable ? <span className="block text-xs text-ink-muted">This item can&apos;t be returned.</span> : null}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        <TextField label="Reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} />
-        {error ? (
-          <p role="alert" className="text-sm font-medium text-danger">
-            {error}
-          </p>
-        ) : null}
-        <div className="flex flex-wrap justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Not now
-          </Button>
-          <Button type="submit" busy={busy}>
-            Request return
-          </Button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-function Detail({ id, orders, payments }: { id: string; orders?: OrdersApi; payments?: PaymentApi }) {
+function Order({ id, api }: { id: string; api?: OrdersApi }) {
+  const apiRef = useRef(api);
+  const client = useCallback(() => (apiRef.current ??= getOrdersApi()), []);
+  const params = useSearchParams();
   const toast = useToast();
-  const justPlaced = useSearchParams().get("placed") === "1";
-  const ordersRef = useRef(orders);
-  const paymentsRef = useRef(payments);
-  const ordersApi = () => (ordersRef.current ??= getOrdersApi());
-  const paymentsApi = () => (paymentsRef.current ??= getPaymentApi());
+  const { phase, payOrder } = useOrderPayment();
+  const [load, setLoad] = useState<Load>({ state: "loading" });
+  /** Waiting for the server to confirm a payment (we were sent here by a payment we could not confirm yet). */
+  const [waiting, setWaiting] = useState(params.get("confirming") === "1");
+  const [payResult, setPayResult] = useState<OrderPayResult | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string>();
+  const cancelKey = useRef<string | null>(null);
+  const justPlaced = params.get("placed") === "1";
 
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
-  const [dialog, setDialog] = useState<"cancel" | "return" | null>(null);
-  const [paying, setPaying] = useState<PaymentIntent | null>(null);
-  const [payBusy, setPayBusy] = useState(false);
-
-  const load = useCallback(async () => {
+  const refresh = useCallback(async () => {
     try {
-      setOrder(await (ordersRef.current ??= getOrdersApi()).get(id));
-      setState("ready");
+      setLoad({ state: "ready", detail: await client().get(id) });
     } catch (error) {
-      setState(isApiError(error, "NOT_FOUND") ? "missing" : "error");
+      setLoad((current) => (current.state === "ready" ? current : { state: isApiError(error, "ORDER_NOT_FOUND") || isApiError(error, "NOT_FOUND") ? "missing" : "failed" }));
     }
-  }, [id]);
+  }, [client, id]);
 
   useEffect(() => {
-    // load() only sets state once the request has answered.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+    // refresh() only sets state once the request has answered.
+    void refresh();
+  }, [refresh]);
 
-  if (state === "loading") {
+  // The webhook is the source of truth: while a payment is unconfirmed, keep reading the order until it moves.
+  const status = load.state === "ready" ? load.detail.order.status : null;
+  useEffect(() => {
+    if (!waiting) return;
+    if (status && status !== "pending_payment") {
+      setWaiting(false);
+      return;
+    }
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      if (tries > POLL_TRIES) {
+        clearInterval(timer);
+        setWaiting(false);
+      } else void refresh();
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [waiting, status, refresh]);
+
+  const lookup = useCatalogLookup({ variantIds: load.state === "ready" ? load.detail.items.map((i) => i.variantId) : [] });
+
+  async function payNow() {
+    if (load.state !== "ready") return;
+    setPaying(true);
+    setPayResult(null);
+    const { order } = load.detail;
+    const result = await payOrder(order.id, order.orderNumber, null);
+    setPaying(false);
+    if (result.kind === "unconfirmed") setWaiting(true);
+    else if (result.kind !== "paid") setPayResult(result);
+    await refresh();
+  }
+
+  async function cancel() {
+    setCancelling(true);
+    setCancelError(undefined);
+    cancelKey.current ??= idempotencyKey();
+    try {
+      await client().cancel(id, cancelKey.current);
+      cancelKey.current = null;
+      setCancelOpen(false);
+      toast("Order cancelled");
+      await refresh();
+    } catch (error) {
+      // A definite answer ends this attempt; a dropped connection keeps the key, so trying again can't cancel twice.
+      if (isApiError(error) && error.status >= 400 && error.status < 500) cancelKey.current = null;
+      setCancelError(userMessage(error));
+      if (isApiError(error, "ORDER_CHANGED") || isApiError(error, "ORDER_NOT_CANCELLABLE") || isApiError(error, "ORDER_DISPATCHED")) void refresh();
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  if (load.state === "loading")
     return (
-      <div role="status" className="grid gap-4">
+      <div role="status" className="grid gap-3">
         <span className="sr-only">Loading your order…</span>
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
-  }
-  if (state === "missing") return <ErrorState title="We couldn't find that order" message="It may belong to another account." />;
-  if (state === "error" || !order) return <ErrorState title="We couldn't load this order" message="Check your connection and try again." onRetry={() => { setState("loading"); void load(); }} />;
+  if (load.state === "missing")
+    return (
+      <EmptyState
+        title="We couldn't find that order"
+        message="It may belong to a different account."
+        action={
+          <Link href="/orders" className={buttonClasses()}>
+            Your orders
+          </Link>
+        }
+      />
+    );
+  if (load.state === "failed") return <ErrorState title="We couldn't load this order" message="Check your connection and try again." onRetry={() => void refresh()} />;
 
-  const status = ORDER_STATUS[order.status];
-
-  async function cancel() {
-    try {
-      setOrder(await ordersApi().cancel(id));
-      setDialog(null);
-      toast("Order cancelled");
-    } catch (error) {
-      setDialog(null);
-      toast(isApiError(error) ? error.message : "We couldn't cancel that. Please try again.", { tone: "error" });
-      void load();
-    }
-  }
-
-  async function requestReturn(lineIds: string[], reason: string) {
-    try {
-      setOrder(await ordersApi().requestReturn(id, { lineIds, reason }));
-      setDialog(null);
-      toast("Return requested");
-      return null;
-    } catch (error) {
-      return isApiError(error) ? error.message : "We couldn't send that. Please try again.";
-    }
-  }
-
-  async function payNow() {
-    setPayBusy(true);
-    try {
-      setPaying(await paymentsApi().retry(id));
-    } catch (error) {
-      toast(isApiError(error) ? error.message : "We couldn't start the payment. Please try again.", { tone: "error" });
-      void load();
-    } finally {
-      setPayBusy(false);
-    }
-  }
+  const { order, items, cancellable, timeline } = load.detail;
+  const display = describeOrder(order);
+  const confirmed = order.status === "placed" || order.status === "completed";
+  const mayPay = canPay(order);
+  const expires = order.expiresAt ? DATE.format(new Date(order.expiresAt)) : null;
 
   return (
     <div className="grid gap-5">
-      {justPlaced ? (
-        <div role="status" className="rounded-card border border-success bg-success-soft px-4 py-3 text-sm font-medium text-success">
-          Thank you! Your order {order.number} is placed. We&apos;ll keep you posted as it moves.
+      {justPlaced && confirmed ? (
+        <div role="status" data-testid="order-confirmation" className="flex items-start gap-3 rounded-card border border-success bg-success-soft px-4 py-4">
+          <CheckCircle2 size={24} className="mt-0.5 flex-none text-success" aria-hidden="true" />
+          <div className="grid gap-1">
+            <h2 className="font-display text-lg font-bold">Thank you, your order is placed!</h2>
+            <p className="text-sm">
+              Order <strong>{order.orderNumber}</strong> is confirmed.{" "}
+              {order.paymentMethod === "cod" ? `Keep ${formatINR(order.totalPaise)} ready to pay when it arrives.` : "Your payment was received."}
+            </p>
+          </div>
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      {waiting && status === "pending_payment" ? (
+        <div role="status" data-testid="payment-confirming" className="flex items-start gap-3 rounded-card border border-info bg-info-soft px-4 py-3 text-sm">
+          <Clock size={20} className="mt-0.5 flex-none text-info" aria-hidden="true" />
+          <p>We&apos;re waiting for your bank to confirm the payment. This page updates by itself. You don&apos;t need to pay again.</p>
+        </div>
+      ) : null}
+
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="grid gap-1">
+          <h1 className="font-display text-2xl font-bold md:text-3xl">Order {order.orderNumber}</h1>
           <p className="text-sm text-ink-muted">Placed {DATE.format(new Date(order.placedAt))}</p>
-          <p className="flex flex-wrap items-center gap-2 text-lg font-bold">
-            Order {order.number}
-            <Badge tone={status.tone}>{status.label}</Badge>
-          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {order.kind === "prime" ? null : <OrderAgainButton lines={order.lines} />}
-          {order.paymentRetryable ? (
-            <Button busy={payBusy} onClick={() => void payNow()}>
-              {order.paymentStatus === "failed" ? "Retry payment" : "Pay now"}
+        <Badge tone={display.tone} className="text-sm">
+          {display.label}
+        </Badge>
+        <span className="sr-only" data-testid="order-status">
+          {display.label}
+        </span>
+      </header>
+      {display.hint ? <p className="-mt-3 text-sm">{display.hint}</p> : null}
+      {order.cancelReason && order.status === "cancelled" ? <p className="-mt-3 text-sm text-ink-muted">Reason: {order.cancelReason}</p> : null}
+
+      {mayPay || payResult ? (
+        <section className="grid gap-3 rounded-card border border-warning bg-warning-soft p-4" aria-labelledby="pay-heading">
+          <h2 id="pay-heading" className="font-display text-base font-semibold">
+            {mayPay ? `Pay ${formatINR(order.totalPaise)} to confirm` : "Payment"}
+          </h2>
+          {mayPay && expires ? <p className="text-sm">Your order is held until {expires}.</p> : null}
+          <PaymentProgress phase={phase} />
+          <div role="alert" data-testid="pay-outcome">
+            {payResult ? <p className="text-sm font-medium">{outcomeMessage(payResult)}</p> : null}
+          </div>
+          {mayPay ? (
+            <Button size="lg" busy={paying} onClick={() => void payNow()} className="w-max">
+              {payResult ? "Try payment again" : "Pay now"}
             </Button>
           ) : null}
-          {order.canCancel ? (
-            <Button variant="secondary" onClick={() => setDialog("cancel")}>
-              Cancel order
-            </Button>
-          ) : null}
-          {order.canReturnUntil ? (
-            <Button variant="secondary" onClick={() => setDialog("return")}>
-              Return items
-            </Button>
-          ) : null}
-        </div>
-      </div>
+        </section>
+      ) : null}
 
       <div className="grid items-start gap-5 lg:grid-cols-[1fr_22rem]">
-        <div className="grid gap-5">
-          <section aria-labelledby="tracking-heading" className="rounded-card border border-line bg-surface p-4 md:p-5">
-            <h2 id="tracking-heading" className="font-display mb-4 text-base font-semibold">
-              Tracking
-            </h2>
-            <OrderTimeline timeline={order.timeline} status={order.status} />
-          </section>
-
-          <section aria-labelledby="items-heading" className="rounded-card border border-line bg-surface p-4 md:p-5">
-            <h2 id="items-heading" className="font-display mb-3 text-base font-semibold">
-              Items
-            </h2>
-            <ul className="grid gap-3">
-              {order.lines.map((line) => (
-                <li key={line.id} className="flex items-center gap-3">
-                  <Link href={`/p/${line.product.slug}`} tabIndex={-1} aria-hidden="true" className="relative size-14 flex-none overflow-hidden rounded-control bg-surface-sunken">
-                    <Image src={line.product.image} alt="" fill sizes="56px" className="object-contain p-1" />
-                  </Link>
-                  <div className="min-w-0 flex-1 text-sm">
-                    <Link href={`/p/${line.product.slug}`} className="font-semibold hover:text-primary hover:underline">
-                      {line.product.name}
-                    </Link>
-                    <p className="text-ink-muted">
-                      {line.variant.label} × {line.quantity}
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold">{formatINR(line.lineTotal)}</p>
+        <section aria-labelledby="items-heading" className="rounded-card border border-line bg-surface px-4 shadow-card">
+          <h2 id="items-heading" className="py-4 font-display text-base font-semibold">
+            Items ({order.itemCount})
+          </h2>
+          <ul>
+            {items.map((item) => {
+              const product = lookup.productOfVariant(item.variantId);
+              const variant = lookup.variant(item.variantId);
+              const delivered = item.units?.delivered ?? 0;
+              return (
+                <li key={item.lineNo} data-testid="order-item" className="grid grid-cols-[4rem_1fr_auto] items-center gap-3 border-t border-line py-3 text-sm">
+                  <span className="relative block aspect-square overflow-hidden rounded-control bg-surface-sunken">
+                    <Image src={product?.image ?? packArtUrl({ name: "Item", brand: "Femxo", toneKey: item.variantId })} alt="" fill sizes="64px" className="object-contain p-1" />
+                  </span>
+                  <span className="grid gap-0.5">
+                    {product ? (
+                      <Link href={`/p/${product.slug}`} className="font-semibold hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus">
+                        {product.name}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold">Item</span>
+                    )}
+                    <span className="text-xs text-ink-muted">
+                      {variant?.label ? `${variant.label} · ` : ""}
+                      {item.quantity} × {formatINR(item.unitPricePaise)}
+                    </span>
+                    {item.units && item.units.delivered > 0 ? (
+                      <span className="text-xs text-success">
+                        {delivered} of {item.units.ordered} delivered
+                      </span>
+                    ) : null}
+                    {order.status === "completed" && product ? (
+                      <Link href={`/p/${product.slug}#reviews`} className="w-max text-xs font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus">
+                        Review this product
+                      </Link>
+                    ) : null}
+                  </span>
+                  <span className="font-semibold tabular-nums">{formatINR(item.linePaise)}</span>
                 </li>
-              ))}
-            </ul>
-          </section>
-        </div>
+              );
+            })}
+          </ul>
+        </section>
 
         <div className="grid gap-4">
-          <BillSummary cart={{ breakup: order.breakup, itemCount: order.itemCount, coupon: null }} />
-          {order.kind === "prime" ? null : (
-          <section aria-labelledby="delivery-heading" className="rounded-card border border-line bg-surface p-4 text-sm">
-            <h2 id="delivery-heading" className="font-display mb-2 text-base font-semibold">
-              Delivery address
+          <section aria-labelledby="bill-heading" className="grid gap-2 rounded-card border border-line bg-surface p-4 text-sm shadow-card">
+            <h2 id="bill-heading" className="text-base font-semibold">
+              Bill
             </h2>
-            <p className="font-semibold">{order.address.name}</p>
-            <p>
-              {order.address.line1}
-              {order.address.line2 ? `, ${order.address.line2}` : ""}
-            </p>
-            <p className="text-ink-muted">
-              {order.address.city}, {order.address.district}, Bihar {order.address.pincode}
-            </p>
-            <p className="text-ink-muted">+91 {order.address.mobile}</p>
+            <dl className="grid gap-2">
+              <div className="flex justify-between">
+                <dt className="text-ink-muted">Items</dt>
+                <dd>{formatINR(order.subtotalPaise)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-ink-muted">Delivery</dt>
+                <dd>{order.deliveryChargePaise === 0 ? "Free" : formatINR(order.deliveryChargePaise)}</dd>
+              </div>
+              <div className="flex justify-between border-t border-line pt-2 text-base font-bold">
+                <dt>Total</dt>
+                <dd data-testid="order-total">{formatINR(order.totalPaise)}</dd>
+              </div>
+            </dl>
+            <p className="text-xs text-ink-muted">{paymentLine(order)}. Prices include GST.</p>
           </section>
-          )}
-          <section aria-labelledby="payment-heading" className="rounded-card border border-line bg-surface p-4 text-sm">
-            <h2 id="payment-heading" className="font-display mb-2 text-base font-semibold">
-              Payment
-            </h2>
-            <p>
-              {METHOD[order.paymentMethod]} · {PAYMENT_STATUS[order.paymentStatus]}
-            </p>
-          </section>
+
+          {order.shipping ? (
+            <section aria-labelledby="ship-heading" className="grid gap-1 rounded-card border border-line bg-surface p-4 text-sm">
+              <h2 id="ship-heading" className="text-base font-semibold">
+                Delivering to
+              </h2>
+              <p className="font-semibold">{order.shipping.name}</p>
+              <p>
+                {order.shipping.line1}
+                {order.shipping.line2 ? `, ${order.shipping.line2}` : ""}
+              </p>
+              {order.shipping.landmark ? <p className="text-ink-muted">Near {order.shipping.landmark}</p> : null}
+              <p className="text-ink-muted">
+                Pincode {order.shipping.pincode} · +91 {order.shipping.phone}
+              </p>
+            </section>
+          ) : null}
         </div>
       </div>
 
-      <CancelDialog open={dialog === "cancel"} onClose={() => setDialog(null)} onConfirm={cancel} />
-      <ReturnDialog order={order} open={dialog === "return"} onClose={() => setDialog(null)} onSubmit={requestReturn} />
-      {paying ? (
-        <PaymentSheet
-          open
-          orderId={order.id}
-          intent={paying}
-          amount={order.total}
-          payments={paymentsApi()}
-          onPaid={() => {
-            setPaying(null);
-            toast("Payment received");
-            void load();
-          }}
-          onClose={() => {
-            setPaying(null);
-            void load();
-          }}
-        />
-      ) : null}
+      <section aria-labelledby="timeline-heading" className="rounded-card border border-line bg-surface p-4 shadow-card">
+        <h2 id="timeline-heading" className="mb-3 font-display text-base font-semibold">
+          Order progress
+        </h2>
+        <OrderTimeline entries={timeline} />
+      </section>
+
+      <div className="flex flex-wrap gap-3">
+        {cancellable ? (
+          <Button variant="secondary" onClick={() => setCancelOpen(true)}>
+            Cancel order
+          </Button>
+        ) : null}
+        <OrderAgainButton items={items} />
+        <Link href="/orders" className={buttonClasses({ variant: "ghost" })}>
+          All orders
+        </Link>
+      </div>
+
+      <Dialog
+        open={cancelOpen}
+        onClose={() => !cancelling && setCancelOpen(false)}
+        title="Cancel this order?"
+        description={`Order ${order.orderNumber}`}
+        footer={
+          <>
+            <Button variant="ghost" disabled={cancelling} onClick={() => setCancelOpen(false)}>
+              Keep my order
+            </Button>
+            <Button variant="danger" busy={cancelling} onClick={() => void cancel()}>
+              Yes, cancel it
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm">
+          {order.paymentMethod === "online" && order.paymentStatus === "captured"
+            ? "Your items go back on the shelf and the money you paid is refunded."
+            : "Your items go back on the shelf. You haven't paid anything, so there is nothing to refund."}
+        </p>
+        <div role="alert">{cancelError ? <p className="mt-2 text-sm font-medium text-danger">{cancelError}</p> : null}</div>
+      </Dialog>
     </div>
   );
 }
 
-/** One order: where it is, what's in it, and what can still be done. */
-export function OrderDetailPage(props: { orders?: OrdersApi; payments?: PaymentApi; orderId?: string }) {
-  const params = useParams<{ id: string }>();
-  const id = props.orderId ?? params.id;
+/** One order: confirmation (right after placing it), progress, items, bill, address, paying and cancelling. */
+export function OrderDetailPage({ api }: { api?: OrdersApi }) {
+  const { id } = useParams<{ id: string }>();
   return (
     <section className="mx-auto w-full max-w-5xl px-4 py-6">
-      <p className="mb-2 text-sm">
+      <p className="mb-3 text-sm">
         <Link href="/orders" className="font-semibold text-primary hover:underline">
-          ← All orders
+          ← Your orders
         </Link>
       </p>
-      <h1 className="sr-only">Order details</h1>
       <RequireCustomer>
-        <Detail id={id} orders={props.orders} payments={props.payments} />
+        <Order id={id} api={api} />
       </RequireCustomer>
     </section>
   );

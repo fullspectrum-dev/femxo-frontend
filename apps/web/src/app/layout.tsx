@@ -1,17 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
+import { headers } from "next/headers";
+import { Suspense } from "react";
 import "./globals.css";
 import { CONTACT, SITE } from "@/lib/constants";
 
-const displayFont = Space_Grotesk({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+// Self-hosted variable fonts (OFL, Latin subset): no request to Google, nothing for the CSP to allow but 'self'.
+const displayFont = localFont({
+  src: "./fonts/space-grotesk-latin.woff2",
+  weight: "300 700",
   variable: "--font-display",
   display: "swap",
 });
 
-const bodyFont = DM_Sans({
-  subsets: ["latin"],
+const bodyFont = localFont({
+  src: "./fonts/dm-sans-latin.woff2",
+  weight: "100 1000",
   variable: "--font-body",
   display: "swap",
 });
@@ -157,6 +161,20 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+/** The inline scripts. They need this request's CSP nonce, so they are read per request (hence the Suspense). */
+async function InlineScripts({ jsonLd }: { jsonLd: boolean }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+  return jsonLd ? (
+    <script
+      type="application/ld+json"
+      nonce={nonce}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }}
+    />
+  ) : (
+    <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -168,13 +186,14 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitializationScript }} />
+        <Suspense fallback={null}>
+          <InlineScripts jsonLd={false} />
+        </Suspense>
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA).replace(/</g, "\\u003c") }}
-        />
+        <Suspense fallback={null}>
+          <InlineScripts jsonLd />
+        </Suspense>
         {children}
       </body>
     </html>

@@ -1,8 +1,8 @@
 "use client";
 
-import { CloudUpload, Eye, Save } from "lucide-react";
+import { CloudUpload, Eye, History, RotateCcw, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AccessDenied, Badge, Button, Card, ErrorState, FormField, LoadingSkeleton, PageHeader, Tabs, TextArea, TextInput, useToast } from "@/components/admin-ui";
+import { AccessDenied, Badge, Button, Card, ConfirmActionDialog, ErrorState, FormField, LoadingSkeleton, PageHeader, Tabs, TextArea, TextInput, useToast } from "@/components/admin-ui";
 import { AuthApiError } from "@/features/auth/services/auth-client";
 import { api } from "@/lib/api";
 import { formatDateTime } from "../format";
@@ -278,10 +278,116 @@ export function CompanyEditor() {
                 </div>
               </dl>
               <p className="mt-4 text-[12px] fx-muted">Every publish is kept as a version, so an earlier text can always be brought back.</p>
+              {section ? <VersionHistory key={`${active}-${section.published?.version ?? 0}`} sectionKey={active} label={def.label} liveVersion={section.published?.version ?? null} onRestored={(updated) => { replace(updated); setEdits((all) => ({ ...all, [active]: undefined })); }} /> : null}
             </Card>
           </div>
         </>
       ) : null}
     </div>
+  );
+}
+
+interface ApiVersion {
+  version: number;
+  content: unknown;
+  publishedBy: string;
+  publishedAt: string;
+  note: string;
+  restoredFrom: number | null;
+}
+
+/** GET …/versions (newest first, by cursor) and POST …/rollback, which republishes an old version as a new one. */
+function VersionHistory({ sectionKey, label, liveVersion, onRestored }: { sectionKey: SectionKey; label: string; liveVersion: number | null; onRestored: (section: ApiSection) => void }) {
+  const toast = useToast();
+  const [versions, setVersions] = useState<ApiVersion[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [state, setState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [pending, setPending] = useState<ApiVersion | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function load(after: string | null) {
+    setState("loading");
+    try {
+      const res = await api.get<{ versions: ApiVersion[]; nextCursor: string | null }>(`/cms/admin/sections/${sectionKey}/versions`, { cursor: after ?? undefined, limit: 10 });
+      setVersions((list) => (after ? [...list, ...res.versions] : res.versions));
+      setCursor(res.nextCursor);
+      setState("ready");
+    } catch {
+      setState("error");
+    }
+  }
+
+  async function rollback(version: ApiVersion) {
+    setPending(null);
+    setBusy(true);
+    try {
+      const res = await api.post<{ section: ApiSection }>(`/cms/admin/sections/${sectionKey}/rollback`, { version: version.version, note: `Restored version ${version.version} from the admin panel` });
+      onRestored(res.section);
+      toast(`${label}: version ${version.version} is live again as version ${res.section.published?.version ?? ""}.`);
+    } catch (error) {
+      toast(messageOf(error), "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section aria-label="Version history" className="mt-5 border-t border-[var(--fx-border)] pt-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="fx-label">Version history</p>
+        {state === "idle" ? (
+          <Button size="sm" variant="ghost" onClick={() => void load(null)}>
+            <History size={14} aria-hidden="true" /> Show
+          </Button>
+        ) : null}
+      </div>
+      {state === "error" ? (
+        <p className="mt-2 text-[13px] fx-muted">
+          Couldn&rsquo;t load the history.{" "}
+          <button type="button" className="underline" onClick={() => void load(null)}>
+            Retry
+          </button>
+        </p>
+      ) : null}
+      {state === "ready" && !versions.length ? <p className="mt-2 text-[13px] fx-muted">Nothing published yet.</p> : null}
+      {versions.length ? (
+        <ol className="mt-3 grid gap-3">
+          {versions.map((v) => (
+            <li key={v.version} className="grid gap-1 text-[13px]">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold">v{v.version}</span>
+                {v.version === liveVersion ? <Badge tone="success">Live</Badge> : null}
+                {v.restoredFrom !== null ? <span className="fx-muted">restored from v{v.restoredFrom}</span> : null}
+              </div>
+              <span className="fx-muted">{formatDateTime(v.publishedAt)}</span>
+              {v.note ? <span className="break-words">{v.note}</span> : null}
+              {v.version !== liveVersion ? (
+                <Button size="sm" variant="secondary" className="w-max" disabled={busy} onClick={() => setPending(v)}>
+                  <RotateCcw size={14} aria-hidden="true" /> Restore
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+      {cursor && state !== "loading" ? (
+        <Button size="sm" variant="ghost" className="mt-2" onClick={() => void load(cursor)}>
+          Older versions
+        </Button>
+      ) : null}
+      {state === "loading" ? <p className="mt-2 text-[13px] fx-muted">Loading…</p> : null}
+      {pending ? (
+        <ConfirmActionDialog
+          open
+          kind="destructive"
+          title={`Restore version ${pending.version}`}
+          description="Its text goes live now as a new version and becomes the draft. Unsaved edits in the form are discarded. This can itself be undone."
+          record={`${label} · v${pending.version}`}
+          confirmLabel="Restore"
+          onClose={() => setPending(null)}
+          onConfirm={() => void rollback(pending)}
+        />
+      ) : null}
+    </section>
   );
 }

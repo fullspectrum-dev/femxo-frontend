@@ -5,12 +5,16 @@ import { packArtUrl } from "../../lib/pack-art";
 /*
  * The storefront's adapter for femxo-backend. The backend publishes an identity-free catalog under
  * /store/v1 (categories, brands, products, product by slug); this maps it onto the storefront's
- * contracts. Everything the backend does not have yet (customer sign-in, cart, checkout, orders,
- * reviews, ratings, stock levels, Prime prices, delivery checks) answers 503 with a plain message,
- * so the UI shows an honest "not available yet" instead of invented data.
+ * contracts. Requests that already address /store/v1 (customer sign-in, /me, /me/location) go to the
+ * backend untouched: the domain clients speak its shapes directly. A signed-in customer's own prices
+ * come from GET /store/v1/me/prices. Cart, addresses, checkout, orders, payments, Prime, wishlist and reviews are
+ * /store/v1 routes the domain clients call directly. What is still missing on the backend (support tickets, ratings
+ * on product cards) answers 503 NOT_AVAILABLE with a plain message, so the UI shows an honest "not available yet".
+ * One adapter route is ours: GET /catalog/lookup?variantIds=&productIds= joins ids (cart, orders, wishlist carry ids
+ * only) with names, pictures and packs from the cached catalogue.
  *
  * Search, filters and sorting run here over the catalog (cached for a minute), because the public
- * catalog API lists by category or brand only.
+ * catalog API lists by category or brand only (no `q`, no price filter).
  */
 
 interface StoreCategory {
@@ -33,6 +37,15 @@ interface StoreVariant {
   label: string;
   mrp: number;
   price: number;
+  /** Added by the stock work (ADR 0016): absent when the stock lookup failed on the backend. */
+  inStock?: boolean;
+  /** 0 up to the backend's display cap (STORE_STOCK_DISPLAY_CAP); the exact stock is never published. */
+  availableQty?: number;
+}
+interface CustomerPrice {
+  pricePaise: number;
+  regularPricePaise: number;
+  tier: string;
 }
 interface StoreProduct {
   id: string;
@@ -48,23 +61,22 @@ interface StoreProduct {
 }
 
 /*
- * Pictures until admin uploads arrive. A product's own photo always wins; then a
- * storefront photo whose brand AND name match exactly; then drawn pack art with
- * the product's real name and brand. Never a picture of another brand's pack.
+ * A product's own photo always wins. Until one is uploaded, drawn pack art carries the product's real
+ * name and brand (a plainly drawn placeholder, never a photo of something else).
  */
-const STORE_PHOTOS = new Set(["femxo-select-instant-coffee", "femxo-select-cow-ghee"]);
-const slugOf = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
 function fallbackImage(p: StoreProduct, brandName: string): string {
-  const key = `${slugOf(brandName)}-${p.slug}`;
-  if (STORE_PHOTOS.has(key)) return `/products/${key}.webp`;
   return packArtUrl({ name: p.name, brand: brandName, toneKey: p.categoryPath[0] ?? p.categoryId });
 }
 
 /** Offers shown while the backend has no banners of its own: flat Femxo artwork, claims the store can stand behind. */
-const STORE_BANNERS: Banner[] = [
-  { id: "store-staples", title: "Kitchen staples", subtitle: "Atta, rice, dal and oil at everyday low prices", image: "/banners/staples.webp", href: "/c/staples" },
-  { id: "store-prime", title: "Join Prime", subtitle: "Extra savings and free delivery on every order", image: "/banners/prime.webp", href: "/prime" },
+export const STORE_BANNERS: Banner[] = [
+  { id: "store-groceries", title: "Fresh groceries at your doorstep", subtitle: "Daily needs delivered across Bihar", image: "/banners/groceries.webp", href: "/search" },
+  { id: "store-dairy", title: "Pure goodness dairy", subtitle: "Milk, curd, ghee and more", image: "/banners/dairy.webp", href: "/search?q=dairy" },
+  { id: "store-vegetables", title: "Fresh vegetables, farm to home", subtitle: "Picked fresh and delivered fast", image: "/banners/vegetables.webp", href: "/search?q=vegetables" },
+  { id: "store-drinks-snacks", title: "Chill drinks and snack feast", subtitle: "Cold drinks and snacks for every mood", image: "/banners/drinks-snacks.webp", href: "/search?q=snacks" },
+  { id: "store-beauty", title: "Beauty and personal care essentials", subtitle: "Everyday care at honest prices", image: "/banners/beauty.webp", href: "/search?q=beauty" },
+  { id: "store-home-care", title: "Home care essentials", subtitle: "Cleaning and household basics", image: "/banners/home-care.webp", href: "/search?q=home+care" },
+  { id: "store-electronics", title: "Modern electronics, smarter living", subtitle: "Smart picks for your home", image: "/banners/electronics.webp", href: "/search?q=electronics" },
 ];
 
 /** The category picture as a URL, or "" when there is none (the storefront then draws a lettered tile). */
@@ -73,8 +85,11 @@ function categoryImage(image: StoreCategory["image"]): string {
   if (typeof image === "string") return image;
   return image.urls?.medium ?? image.urls?.small ?? "";
 }
-/** The public API does not publish stock, so a product is shown as orderable, up to this many per order. */
+/** When the backend sends no stock for a variant (lookup failed), it is treated as orderable up to this many (and says `stockKnown: false`). */
 const ORDERABLE_UP_TO = 10;
+/** The most one cart line may hold on the storefront; the backend's own limit (CART_MAX_LINE_QUANTITY) has the last word. */
+const MAX_PER_ORDER = 50;
+const STORE_PREFIX = "/store/v1";
 const POOL_LIMIT = 1000;
 const PAGE = 100;
 const TTL_MS = 60_000;
@@ -99,6 +114,18 @@ export function createStoreAdapter(http: ApiAdapter): ApiAdapter {
     const res = await http.send({ method: "GET", path: `/store/v1${path}`, query });
     if (res.status < 200 || res.status >= 300) throw new StoreError(res.status);
     return res.body as T;
+  }
+
+  /** The signed-in customer's prices (GET /me/prices). Any failure means "no overlay": the public price is still right to show. */
+  async function customerPrices(accessToken: string | undefined, variantIds: string[]): Promise<Record<string, CustomerPrice>> {
+    if (!accessToken || variantIds.length === 0) return {};
+    try {
+      const res = await http.send({ method: "GET", path: `${STORE_PREFIX}/me/prices`, query: { variantIds: variantIds.slice(0, 50).join(",") }, accessToken });
+      const prices = (res.body as { prices?: Record<string, CustomerPrice> } | null)?.prices;
+      return res.status === 200 && prices ? prices : {};
+    } catch {
+      return {};
+    }
   }
 
   async function loadCategories(): Promise<Category[]> {
@@ -155,8 +182,29 @@ export function createStoreAdapter(http: ApiAdapter): ApiAdapter {
     return snapshot;
   }
 
+  /** Products and variants for ids, from the cached catalogue; ids the catalogue (up to 1000 products) does not hold are left out. */
+  async function lookup(variantIds: unknown, productIds: unknown) {
+    const split = (value: unknown) => asList(value).flatMap((v) => v.split(",")).map((v) => v.trim()).filter(Boolean).slice(0, 100);
+    const wantedVariants = new Set(split(variantIds));
+    const wantedProducts = new Set(split(productIds));
+    const snap = await current();
+    const byId = brandIndex(snap.brands);
+    const products: ProductSummary[] = [];
+    const variants: Record<string, { productId: string; variant: ProductDetail["variants"][number] }> = {};
+    for (const p of snap.products) {
+      const hits = p.variants.filter((v) => wantedVariants.has(v.id));
+      if (hits.length === 0 && !wantedProducts.has(p.id)) continue;
+      const detail = detailOf(p, snap);
+      products.push(summary(p, byId));
+      for (const v of detail.variants) if (wantedVariants.has(v.id)) variants[v.id] = { productId: p.id, variant: v };
+    }
+    return { products, variants };
+  }
+
   return {
     async send(req: ApiRequest): Promise<ApiResponse> {
+      // Customer sign-in, /me and the rest of /store/v1 already speak the backend's own shapes.
+      if (req.path === STORE_PREFIX || req.path.startsWith(`${STORE_PREFIX}/`)) return http.send(req);
       if (req.method !== "GET") return unavailable("This");
       try {
         return await route(req);
@@ -198,11 +246,12 @@ export function createStoreAdapter(http: ApiAdapter): ApiAdapter {
       return json([...categories, ...brands, ...products]);
     }
 
-    const detail = /^\/catalog\/products\/([^/]+)(?:\/(related|reviews|availability))?$/.exec(path);
+    if (path === "/catalog/lookup") return json(await lookup(q.variantIds, q.productIds));
+
+    const detail = /^\/catalog\/products\/([^/]+)(?:\/(related|availability))?$/.exec(path);
     if (detail) {
       const slug = decodeURIComponent(detail[1]!);
       const part = detail[2];
-      if (part === "reviews") return json({ items: [], nextCursor: null, summary: { average: 0, count: 0, histogram: [0, 0, 0, 0, 0] } });
       const snap = await current();
       if (part === "related") {
         const self = snap.products.find((p) => p.slug === slug);
@@ -210,15 +259,24 @@ export function createStoreAdapter(http: ApiAdapter): ApiAdapter {
         const related = self ? snap.products.filter((p) => p.id !== self.id && p.categoryId === self.categoryId).slice(0, 8) : [];
         return json(related.map((p) => summary(p, byId)));
       }
-      const product = snap.products.find((p) => p.slug === slug) ?? (await get<{ product: StoreProduct }>(`/products/${encodeURIComponent(slug)}`)).product;
+      let product = snap.products.find((p) => p.slug === slug) ?? (await get<{ product: StoreProduct }>(`/products/${encodeURIComponent(slug)}`)).product;
       if (part === "availability") {
-        return json(product.variants.map((v) => ({ variantId: v.id, stock: ORDERABLE_UP_TO, price: v.price, primePrice: v.price, appliedPrice: v.price })));
+        // Live numbers: the cached catalogue can be a minute old, and stock moves faster than that.
+        product = (await get<{ product: StoreProduct }>(`/products/${encodeURIComponent(slug)}`)).product;
+        const own = await customerPrices(req.accessToken, product.variants.map((v) => v.id));
+        return json(
+          product.variants.map((v) => {
+            const mine = own[v.id];
+            // The public price is the selling price; a Prime member's overlay is lower, and says what they'd pay without it.
+            const regular = mine?.regularPricePaise ?? v.price;
+            const applied = mine?.pricePaise ?? v.price;
+            return { variantId: v.id, stock: v.availableQty ?? ORDERABLE_UP_TO, price: regular, primePrice: mine?.tier === "prime" ? applied : regular, appliedPrice: applied };
+          })
+        );
       }
       return json(detailOf(product, snap));
     }
 
-    if (path.startsWith("/delivery/serviceability/")) return unavailable("Delivery checks");
-    if (path.startsWith("/auth") || path.startsWith("/me")) return fail(401, "UNAUTHENTICATED", "Customer sign-in isn't available yet.");
     return unavailable("This part of the store");
   }
 }
@@ -254,7 +312,7 @@ function summary(p: StoreProduct, brands: Map<string, Brand>): ProductSummary {
     packLabel: v.label,
     fromPrimePrice: v.price,
     mrp: v.mrp,
-    inStock: true,
+    inStock: p.variants.some((variant) => variant.inStock !== false),
     primeExclusive: false,
     badges: [],
   };
@@ -278,8 +336,9 @@ function detailOf(p: StoreProduct, snap: Snapshot): ProductDetail {
       price: v.price,
       primePrice: v.price,
       gstBps: p.gstRateBp,
-      stock: ORDERABLE_UP_TO,
-      maxPerOrder: ORDERABLE_UP_TO,
+      stock: v.availableQty ?? ORDERABLE_UP_TO,
+      stockKnown: v.availableQty !== undefined,
+      maxPerOrder: MAX_PER_ORDER,
       bestBefore: null,
     })),
     returnable: false,

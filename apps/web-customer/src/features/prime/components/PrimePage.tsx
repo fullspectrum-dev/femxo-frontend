@@ -4,36 +4,36 @@ import { Check, Crown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatINR } from "@femxo/shared";
-import { isApiError } from "@femxo/shared/api";
-import type { AuthApi, PrimeApi } from "@femxo/shared/api";
-import type { MembershipStatus, PaymentIntent, PrimePlan } from "@femxo/shared/contracts";
+import { formatINR, idempotencyKey, verdictOfPayment } from "@femxo/shared";
+import { isApiError, userMessage } from "@femxo/shared/api";
+import type { AuthApi, OrdersApi, PrimeApi } from "@femxo/shared/api";
+import type { PrimeMembership, PrimePlan, PrimePurchase } from "@femxo/shared/contracts";
 import { Badge, Button, buttonClasses, EmptyState, ErrorState, Skeleton, useToast } from "@femxo/ui";
 import { useSession } from "@/features/auth/components/SessionProvider";
-import { PaymentSheet } from "@/features/payments/components/PaymentSheet";
-import { getAuthApi, getPrimeApi } from "@/lib/api";
+import { PaymentProgress } from "@/features/payments/components/PaymentProgress";
+import { outcomeMessage } from "@/features/payments/outcome-copy";
+import { useOnlinePayment } from "@/features/payments/useOnlinePayment";
+import type { PayResult } from "@/features/payments/useOnlinePayment";
+import { getAuthApi, getOrdersApi, getPrimeApi } from "@/lib/api";
 import { MembershipCard } from "./MembershipCard";
-import { PrimeCoupons, ReferralCard } from "./PrimePerks";
 
 const DATE = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
-
-interface Pending {
-  orderId: string;
-  intent: PaymentIntent;
-  amount: number;
-}
 
 function PlanCard({ plan, verb, highlight, busy, onChoose }: { plan: PrimePlan; verb: string; highlight: boolean; busy: boolean; onChoose: () => void }) {
   const months = Math.max(1, Math.round(plan.durationDays / 30));
   return (
-    <li className={highlight ? "relative flex flex-col gap-3 rounded-card border-2 border-primary bg-surface p-5" : "flex flex-col gap-3 rounded-card border border-line bg-surface p-5"}>
-      {highlight ? <Badge tone="gold" className="absolute -top-3 left-5">Best value</Badge> : null}
+    <li data-testid="prime-plan" className={highlight ? "relative flex flex-col gap-3 rounded-card border-2 border-primary bg-surface p-5" : "flex flex-col gap-3 rounded-card border border-line bg-surface p-5"}>
+      {highlight ? (
+        <Badge tone="gold" className="absolute -top-3 left-5">
+          Best value
+        </Badge>
+      ) : null}
       <h3 className="font-display text-xl font-bold">{plan.name}</h3>
       <p>
-        <span className="text-3xl font-bold">{formatINR(plan.price)}</span>
+        <span className="text-3xl font-bold">{formatINR(plan.pricePaise)}</span>
         <span className="text-sm text-ink-muted"> for {plan.durationDays} days</span>
       </p>
-      {months > 1 ? <p className="text-sm text-success">Just {formatINR(Math.round(plan.price / months))} a month</p> : null}
+      {months > 1 ? <p className="text-sm text-success">Just {formatINR(Math.round(plan.pricePaise / months))} a month</p> : null}
       <ul className="grid flex-1 gap-1.5 text-sm">
         {plan.benefits.map((benefit) => (
           <li key={benefit} className="flex gap-2">
@@ -50,53 +50,81 @@ function PlanCard({ plan, verb, highlight, busy, onChoose }: { plan: PrimePlan; 
 }
 
 /**
- * Prime: the plans for everyone, and for a member their card, coupons and
- * referral link. Joining goes through the same payment flow as an order.
+ * Prime: the plans for everyone, and for a member their card. Joining pays with Razorpay Checkout, like an order: the server makes
+ * the payment for the plan's own price, and Prime starts when the server has the money, never on the browser's say-so.
  */
-export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi }) {
+export function PrimePage({ prime, auth, orders }: { prime?: PrimeApi; auth?: AuthApi; orders?: OrdersApi }) {
   const router = useRouter();
   const toast = useToast();
   const { status, user, setUser } = useSession();
   const primeRef = useRef(prime);
   const authRef = useRef(auth);
+  const ordersRef = useRef(orders);
   const primeApi = useCallback(() => (primeRef.current ??= getPrimeApi()), []);
+  const { phase, pay } = useOnlinePayment();
 
   const [plans, setPlans] = useState<PrimePlan[] | null>(null);
-  const [state, setState] = useState<MembershipStatus | null>(null);
-  const [failed, setFailed] = useState<boolean | "coming-soon">(false);
+  const [state, setState] = useState<PrimeMembership | null>(null);
+  const [failed, setFailed] = useState(false);
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
-  const [pending, setPending] = useState<Pending | null>(null);
-  const [unpaid, setUnpaid] = useState<string | null>(null);
+  const [result, setResult] = useState<PayResult | { kind: "error"; message: string } | null>(null);
+  const [waiting, setWaiting] = useState(false);
+  /** One key per plan being bought: a retry of the same purchase gets the same payment back, a different plan a new one. */
+  const attempt = useRef<{ planId: string; key: string } | null>(null);
 
   const signedIn = status === "signed-in";
   const userId = user?.id ?? null;
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadPlans = useCallback(() => {
+    setFailed(false);
     primeApi()
       .plans()
-      .then((list) => !cancelled && setPlans(list))
-      .catch((error) => !cancelled && setFailed(isApiError(error, "NOT_AVAILABLE") ? "coming-soon" : true));
-    return () => {
-      cancelled = true;
-    };
+      .then(setPlans)
+      .catch(() => setFailed(true));
   }, [primeApi]);
 
-  const loadMembership = useCallback(async () => {
-    setState(await primeApi().membership());
-  }, [primeApi]);
+  useEffect(() => {
+    // loadPlans() only sets state once the request has answered.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadPlans();
+  }, [loadPlans]);
 
   useEffect(() => {
     if (!signedIn || !userId) return;
     let cancelled = false;
     primeApi()
       .membership()
-      .then((result) => !cancelled && setState(result))
+      .then((m) => !cancelled && setState(m))
       .catch(() => undefined); // the plans are still worth showing
     return () => {
       cancelled = true;
     };
   }, [signedIn, userId, primeApi]);
+
+  // Money was taken but not yet confirmed: keep reading the membership until Prime starts (or we give up and say it will).
+  useEffect(() => {
+    if (!waiting) return;
+    const before = state?.subscription?.endAt;
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries += 1;
+      try {
+        const m = await primeApi().membership();
+        if (m.isPrime && m.subscription?.endAt !== before) {
+          setState(m);
+          setWaiting(false);
+          setUser(await (authRef.current ??= getAuthApi()).me());
+          toast("Welcome to Prime! Your member prices are on.");
+        }
+      } catch {
+        // try again
+      }
+      if (tries >= 40) setWaiting(false);
+    }, 3000);
+    return () => clearInterval(timer);
+    // `state` is read once, when waiting starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waiting]);
 
   async function choose(plan: PrimePlan) {
     if (!signedIn) {
@@ -104,34 +132,51 @@ export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi })
       return;
     }
     setBusyPlan(plan.id);
-    setUnpaid(null);
+    setResult(null);
+    if (attempt.current?.planId !== plan.id) attempt.current = { planId: plan.id, key: idempotencyKey() };
+    let purchase: PrimePurchase;
     try {
-      const { order, intent } = await primeApi().purchase(plan.id);
-      setPending({ orderId: order.id, intent, amount: order.total });
+      purchase = await primeApi().purchase(plan.id, attempt.current.key);
     } catch (error) {
-      toast(isApiError(error) ? error.message : "We couldn't start that. Please try again.", { tone: "error" });
-    } finally {
+      if (isApiError(error) && error.status >= 400 && error.status < 500 && error.status !== 429) attempt.current = null;
       setBusyPlan(null);
+      setResult({ kind: "error", message: userMessage(error, "We couldn't start that. Please try again.") });
+      return;
     }
+    const orders = (ordersRef.current ??= getOrdersApi());
+    const outcome = await pay({
+      keyId: purchase.payment.keyId,
+      providerOrderId: purchase.payment.providerOrderId,
+      amountPaise: purchase.payment.amountPaise,
+      description: `Femxo Prime: ${purchase.plan.name}`,
+      prefill: user ? { name: user.name || undefined, contact: `+91${user.phone}`, email: user.email ?? undefined } : undefined,
+      verify: (success) => orders.verifyPayment(success),
+      // The payment's id is known from the start, so asking after it works even if the browser's callback never reached us.
+      check: async () => verdictOfPayment(await orders.payment(purchase.payment.id)),
+    });
+    setBusyPlan(null);
+    if (outcome.kind === "paid") {
+      attempt.current = null;
+      try {
+        setState(await primeApi().membership());
+        setUser(await (authRef.current ??= getAuthApi()).me());
+      } catch {
+        // The membership is paid for either way; a reload will show it.
+      }
+      toast("Welcome to Prime! Your member prices are on.");
+      return;
+    }
+    if (outcome.kind === "unconfirmed") setWaiting(true);
+    if (outcome.kind === "failed") attempt.current = null;
+    setResult(outcome);
   }
 
-  async function paid() {
-    setPending(null);
-    try {
-      await loadMembership();
-      // Prices across the site follow the customer's tier.
-      setUser(await (authRef.current ??= getAuthApi()).me());
-    } catch {
-      // The membership is paid for either way; a reload will show it.
-    }
-    toast("Welcome to Prime! Prime prices and free delivery are on.");
-  }
-
-  if (failed === "coming-soon" && !plans) {
+  if (failed && !plans) return <ErrorState title="We couldn't load Prime" message="Check your connection and try again." onRetry={loadPlans} />;
+  if (plans && plans.length === 0)
     return (
       <EmptyState
-        title="Prime opens soon"
-        message="Member prices, free delivery and members-only coupons, from ₹99 a month. Plans go live shortly."
+        title="No Prime plans right now"
+        message="There are no plans on sale at the moment. Please check back soon."
         action={
           <Link href="/" className={buttonClasses()}>
             Keep shopping
@@ -139,12 +184,9 @@ export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi })
         }
       />
     );
-  }
-  if (failed && !plans) return <ErrorState title="We couldn't load Prime" message="Check your connection and try again." onRetry={() => window.location.reload()} />;
 
-  const active = state?.active === true;
-  const lapsed = !active && state?.membership != null;
-  const verb = active ? "Extend with" : lapsed ? "Renew" : "Join";
+  const active = state?.isPrime === true;
+  const verb = active ? "Extend with" : "Join";
 
   return (
     <section className="mx-auto w-full max-w-5xl px-4 py-8">
@@ -154,32 +196,27 @@ export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi })
           Femxo Prime
         </p>
         <h1 className="font-display text-3xl font-bold md:text-4xl">Pay less, every day</h1>
-        <p className="mx-auto max-w-xl text-ink-muted">Prime prices on everything, free delivery on every order, and member-only coupons.</p>
+        <p className="mx-auto max-w-xl text-ink-muted">Member prices on the Femxo store.</p>
       </div>
 
-      {unpaid ? (
-        <p role="status" className="mb-4 rounded-control bg-warning-soft px-4 py-3 text-sm font-medium text-warning">
-          Your Prime payment is waiting.{" "}
-          <Link href={`/orders/${unpaid}`} className="font-semibold underline">
-            Finish it from your orders
-          </Link>
-          .
-        </p>
-      ) : null}
+      <div className="mb-4 grid gap-3" aria-live="polite">
+        <PaymentProgress phase={phase} />
+        {waiting ? (
+          <p role="status" data-testid="prime-confirming" className="rounded-control bg-info-soft px-4 py-3 text-sm font-medium text-info">
+            We&apos;re waiting for your bank to confirm the payment. Prime starts as soon as it does, and this page updates by itself. You don&apos;t need to pay again.
+          </p>
+        ) : null}
+        {result && result.kind !== "paid" ? (
+          <p role="alert" data-testid="prime-outcome" className="rounded-control bg-warning-soft px-4 py-3 text-sm font-medium text-ink">
+            {outcomeMessage(result)}
+          </p>
+        ) : null}
+      </div>
 
-      {lapsed && state?.membership ? (
-        <p role="status" className="mb-4 rounded-control bg-info-soft px-4 py-3 text-sm font-medium text-info">
-          Your Prime ended on {DATE.format(new Date(state.membership.validTill))}. Renew to get Prime prices and free delivery again.
-        </p>
-      ) : null}
-
-      {active && state?.membership ? (
-        <div className="mb-8 grid gap-5">
-          <MembershipCard membership={state.membership} name={user?.name ?? ""} />
-          <div className="grid items-start gap-5 md:grid-cols-2">
-            <PrimeCoupons prime={prime} />
-            <ReferralCard prime={prime} />
-          </div>
+      {active && state?.subscription ? (
+        <div className="mb-8 grid gap-2">
+          <MembershipCard subscription={state.subscription} name={user?.name ?? ""} />
+          <p className="text-sm text-ink-muted">Your Prime runs until {DATE.format(new Date(state.subscription.endAt))}. Extending adds the new plan on top of the days you have left.</p>
         </div>
       ) : null}
 
@@ -194,24 +231,17 @@ export function PrimePage({ prime, auth }: { prime?: PrimeApi; auth?: AuthApi })
       ) : (
         <ul className="grid gap-6 pt-3 md:grid-cols-3">
           {plans.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} verb={verb} highlight={plan.id === "pln-annual"} busy={busyPlan === plan.id} onChoose={() => void choose(plan)} />
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              verb={verb}
+              highlight={plans.length > 1 && plan.durationDays === Math.max(...plans.map((p) => p.durationDays))}
+              busy={busyPlan === plan.id}
+              onChoose={() => void choose(plan)}
+            />
           ))}
         </ul>
       )}
-
-      {pending ? (
-        <PaymentSheet
-          open
-          orderId={pending.orderId}
-          intent={pending.intent}
-          amount={pending.amount}
-          onPaid={() => void paid()}
-          onClose={() => {
-            setUnpaid(pending.orderId);
-            setPending(null);
-          }}
-        />
-      ) : null}
     </section>
   );
 }

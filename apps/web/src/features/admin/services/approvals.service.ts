@@ -1,4 +1,6 @@
+import { authApi } from "@/features/auth";
 import { api } from "@/lib/api";
+import { ApprovalDetail } from "../modules/extras/ApprovalDetail";
 import type { RecordRow } from "../data/records";
 import { userNames } from "./lookups";
 import { pageOf } from "./shared";
@@ -49,11 +51,27 @@ function toRow(a: ApiApproval, who: Map<string, string>): RecordRow {
   };
 }
 
+/** The signed-in user's id, for "Assigned to me". Asked once per page load. */
+let myId: Promise<string> | undefined;
+const me = () =>
+  (myId ??= authApi.me().then(
+    (user) => user.id,
+    (error) => {
+      myId = undefined;
+      throw error;
+    }
+  ));
+
 export const approvalsService: LiveService = {
   actions: ["approve", "reject"],
   searchPlaceholder: "Filter the requests on this page…",
-  async list({ q, status, cursor, limit }) {
-    const res = await api.get<{ items: ApiApproval[]; nextCursor: string | null }>("/approvals", { status, cursor, limit });
+  viewPatch: {
+    filters: [{ key: "mine", label: "Assigned to me" }],
+    extra: ApprovalDetail,
+  },
+  async list({ q, status, cursor, limit, flags }) {
+    const assignedTo = flags?.includes("mine") ? await me() : undefined;
+    const res = await api.get<{ items: ApiApproval[]; nextCursor: string | null }>("/approvals", { status, assignedTo, cursor, limit });
     const who = await people();
     const needle = q?.trim().toLowerCase();
     const rows = res.items

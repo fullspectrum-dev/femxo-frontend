@@ -1,5 +1,6 @@
-import { CreditCard, LayoutGrid, Package, Truck, Warehouse } from "lucide-react";
+import { Banknote, ClipboardCheck, CreditCard, LayoutGrid, Package, RotateCcw, Route, Truck, Wallet, Warehouse } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { BookOpen, FileText, Gauge, Landmark, Percent, Scale, ShoppingCart, Star as StarIcon, UserRound as UserIcon } from "lucide-react";
 import type { AccessSummary } from "@/features/auth/types/auth";
 import { NAV_GROUPS } from "./nav";
 import type { ModuleKey, NavGroup, NavItem } from "./nav";
@@ -14,7 +15,7 @@ import type { ModuleKey, NavGroup, NavItem } from "./nav";
  * and rewritten to the panel's base path with `panelHref`.
  */
 
-export type PanelId = "super-admin" | "admin" | "warehouse" | "dealer" | "sub-dealer";
+export type PanelId = "super-admin" | "admin" | "warehouse" | "dealer" | "sub-dealer" | "delivery" | "dispatch" | "field" | "finance";
 
 export interface PanelItem {
   key: ModuleKey;
@@ -48,6 +49,8 @@ const P = {
   billing: ["invoice.view", "invoice.issue"],
   finance: ["wallet.view", "finance.payout.view", "finance.payout.request", "cod.view"],
   reports: ["finance.report.view", "report.manage", "dashboard.view"],
+  payments: ["payment.view", "payment.refund", "payment.reconcile"],
+  reviews: ["review.moderate"],
   users: ["user.view", "user.manage"],
   roles: ["role.view"],
 } as const;
@@ -81,6 +84,7 @@ export const PANELS: Record<PanelId, PanelConfig> = {
           { key: "dealers", label: "Dealers", anyOf: P.dealers },
           { key: "sub-dealers", label: "Sub-Dealers", anyOf: P.subDealers },
           { key: "customers", label: "Customers", anyOf: P.customers },
+          { key: "reviews", label: "Reviews", anyOf: P.reviews },
           { key: "prime", label: "Prime Membership", anyOf: P.prime },
         ],
       },
@@ -98,6 +102,7 @@ export const PANELS: Record<PanelId, PanelConfig> = {
         items: [
           { key: "billing", label: "Billing & Invoices", anyOf: P.billing },
           { key: "finance", label: "Finance & Wallet", anyOf: P.finance },
+          { key: "payments", label: "Payments", anyOf: P.payments },
         ],
       },
       {
@@ -207,10 +212,123 @@ export const PANELS: Record<PanelId, PanelConfig> = {
       { label: "Wallet", key: "finance", icon: CreditCard },
     ],
   },
+  delivery: {
+    id: "delivery",
+    name: "Delivery Partner",
+    basePath: "/panel/delivery",
+    roleNames: ["delivery partner", "delivery agent", "delivery boy", "rider"],
+    groups: [
+      {
+        label: "My day",
+        items: [
+          { key: "dashboard", label: "My routes", icon: Route, anyOf: ["delivery.agent"] },
+          { key: "delivery-earnings", label: "My earnings", icon: Wallet, anyOf: ["delivery.agent"] },
+        ],
+      },
+    ],
+    bottomNav: [
+      { label: "Routes", key: "dashboard", icon: Route },
+      { label: "Earnings", key: "delivery-earnings", icon: Wallet },
+    ],
+  },
+  dispatch: {
+    id: "dispatch",
+    name: "Dispatch",
+    basePath: "/panel/dispatch",
+    roleNames: ["dispatcher", "dispatch manager", "dispatch"],
+    groups: [
+      {
+        label: "Routes",
+        items: [
+          { key: "dashboard", label: "Delivery routes", icon: Route, anyOf: ["delivery.dispatch"] },
+          { key: "dispatch-earnings", label: "Partner earnings", icon: Wallet, anyOf: ["delivery.dispatch"] },
+        ],
+      },
+      {
+        label: "Cash",
+        items: [
+          { key: "cash-handovers", label: "Cash hand-overs", icon: Banknote, anyOf: ["delivery.cash.receive"] },
+          { key: "reconciliation", label: "Reconciliation", icon: ClipboardCheck, anyOf: ["delivery.cash.receive"] },
+          { key: "cod-tasks", label: "COD tasks", icon: CreditCard, anyOf: ["cod.view"] },
+        ],
+      },
+      { label: "After delivery", items: [{ key: "delivery-returns", label: "Returns", icon: RotateCcw, anyOf: ["delivery.view"] }] },
+    ],
+    bottomNav: [
+      { label: "Routes", key: "dashboard", icon: Route },
+      { label: "Cash", key: "cash-handovers", icon: Banknote },
+      { label: "Recon", key: "reconciliation", icon: ClipboardCheck },
+    ],
+  },
+  field: {
+    id: "field",
+    name: "Field Staff",
+    basePath: "/panel/field",
+    roleNames: ["field staff", "field executive", "field officer", "field sales", "field agent"],
+    groups: [
+      { label: "Overview", items: [{ key: "dashboard", label: "Home", icon: Gauge, anyOf: [] }] },
+      {
+        label: "Customers",
+        items: [
+          { key: "my-customers", label: "My customers", icon: UserIcon, anyOf: ["customer.view", "customer.manage"] },
+          { key: "sell-prime", label: "Sell Prime", icon: StarIcon, anyOf: ["membership.subscribe"] },
+        ],
+      },
+      {
+        label: "Orders",
+        items: [
+          { key: "new-order", label: "New order", icon: ShoppingCart, anyOf: ["order.create"] },
+          { key: "my-orders", label: "My orders & COD", icon: Truck, anyOf: ["order.view", "cod.collect"] },
+        ],
+      },
+    ],
+    bottomNav: [
+      { label: "Customers", key: "my-customers", icon: UserIcon },
+      { label: "New order", key: "new-order", icon: ShoppingCart },
+      { label: "Orders", key: "my-orders", icon: Truck },
+    ],
+  },
+  finance: {
+    id: "finance",
+    name: "Finance",
+    basePath: "/panel/finance",
+    roleNames: ["finance", "finance admin", "finance manager", "finance officer", "accounts", "accountant"],
+    groups: [
+      { label: "Overview", items: [{ key: "dashboard", label: "Home", icon: Gauge, anyOf: [] }] },
+      {
+        label: "Money out",
+        items: [
+          { key: "payouts", label: "Payouts", icon: Landmark, anyOf: ["finance.payout.view", "finance.payout.request", "finance.payout.approve", "finance.payout-account.manage"] },
+          { key: "ledger", label: "Wallets & ledger", icon: BookOpen, anyOf: ["wallet.view"] },
+          { key: "settlement-recon", label: "Reconciliation", icon: Scale, anyOf: ["finance.reconcile"] },
+          { key: "payments", label: "Online payments", icon: Banknote, anyOf: P.payments },
+        ],
+      },
+      {
+        label: "Books",
+        items: [
+          { key: "registers", label: "Registers & P&L", icon: FileText, anyOf: ["finance.report.view"] },
+          { key: "invoices", label: "Invoices & notes", icon: FileText, anyOf: ["invoice.view"] },
+        ],
+      },
+      {
+        label: "Rules",
+        items: [
+          { key: "commission-plans", label: "Commission plans", icon: Percent, anyOf: ["commission.plan.view", "commission.plan.manage"] },
+          { key: "settlement-rules", label: "Settlement rules", icon: Scale, anyOf: ["commission.recovery.manage"] },
+        ],
+      },
+    ],
+    bottomNav: [
+      { label: "Payouts", key: "payouts", icon: Landmark },
+      { label: "Ledger", key: "ledger", icon: BookOpen },
+      { label: "Invoices", key: "invoices", icon: FileText },
+    ],
+  },
 };
 
 /** Role panels in the order a multi-role user is sent to them (widest reach first). */
-export const ROLE_PANEL_ORDER: readonly PanelId[] = ["admin", "warehouse", "dealer", "sub-dealer"];
+export const ROLE_PANEL_ORDER: readonly PanelId[] = ["admin", "warehouse", "dealer", "sub-dealer", "finance", "dispatch", "field", "delivery"];
 
 export function isPanelId(value: string): value is PanelId {
   return Object.hasOwn(PANELS, value);
@@ -262,7 +380,6 @@ export function panelNav(panel: PanelConfig, access: AccessSummary | null): NavG
           label: item.label,
           icon: item.icon ?? icons.get(item.key) ?? LayoutGrid,
           href: `/admin/${item.key}`,
-          permission: item.anyOf[0] ?? "",
         })
       ),
     }))

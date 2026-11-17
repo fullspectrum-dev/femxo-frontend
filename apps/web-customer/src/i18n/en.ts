@@ -54,7 +54,7 @@ export const en = {
   "home.deals": "Today's deals",
   "home.primePicks": "Prime picks",
   "home.primeStrip.title": "Femxo Prime",
-  "home.primeStrip.text": "Member prices on every product, free delivery on all orders, and coupons only for members. From ₹99 a month.",
+  "home.primeStrip.text": "Member prices on the Femxo store.",
   "home.primeStrip.cta": "See Prime plans",
 
   // Pages that couldn't be shown

@@ -1,51 +1,33 @@
-import { Check, Circle } from "lucide-react";
-import type { OrderStatus, TimelineEvent } from "@femxo/shared/contracts";
-import { cn } from "@femxo/ui";
-import { NORMAL_PATH, ORDER_STATUS } from "../status";
+import { Check } from "lucide-react";
+import type { TimelineEntry } from "@femxo/shared/contracts";
+import { timelineText } from "../status";
 
 const WHEN = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
-/**
- * Where the order has been, and, while it is on the normal path, where it
- * goes next. Cancelled, failed and returned orders show only what happened.
- */
-export function OrderTimeline({ timeline, status }: { timeline: readonly TimelineEvent[]; status: OrderStatus }) {
-  const reached = new Set(timeline.map((event) => event.status));
-  const onTrack = NORMAL_PATH.includes(status);
-  const upcoming = onTrack ? NORMAL_PATH.filter((step) => !reached.has(step)) : [];
-
+/** What has happened to the order, oldest first. The last entry is where the order stands now. */
+export function OrderTimeline({ entries }: { entries: readonly TimelineEntry[] }) {
+  if (entries.length === 0) return <p className="text-sm text-ink-muted">Nothing has happened to this order yet.</p>;
   return (
-    <ol aria-label="Order tracking" className="grid gap-0">
-      {timeline.map((event, index) => {
-        const current = index === timeline.length - 1;
+    <ol aria-label="Order timeline" className="grid gap-0">
+      {entries.map((entry, index) => {
+        const last = index === entries.length - 1;
         return (
-          <li key={`${event.status}-${event.at}`} aria-current={current ? "step" : undefined} className="relative flex gap-3 pb-5 last:pb-0">
-            <span aria-hidden="true" className={cn("relative z-10 grid size-6 flex-none place-items-center rounded-full", current ? "bg-primary text-on-primary" : "bg-success text-on-primary")}>
-              <Check size={14} strokeWidth={3} />
+          <li key={`${entry.type}-${entry.at}-${index}`} className="grid grid-cols-[1.75rem_1fr] gap-3" aria-current={last ? "step" : undefined}>
+            <span className="relative flex justify-center">
+              <span aria-hidden="true" className={`z-10 mt-0.5 grid size-6 place-items-center rounded-full ${last ? "bg-primary text-on-primary" : "bg-primary-soft text-primary"}`}>
+                <Check size={14} />
+              </span>
+              {last ? null : <span aria-hidden="true" className="absolute top-6 h-[calc(100%-0.5rem)] w-0.5 bg-line" />}
             </span>
-            {index < timeline.length - 1 || upcoming.length > 0 ? <span aria-hidden="true" className="absolute left-3 top-6 -ml-px h-full w-0.5 bg-line" /> : null}
-            <div className="text-sm">
-              <p className="font-semibold">{ORDER_STATUS[event.status].label}</p>
-              <p className="text-ink-muted">
-                <time dateTime={event.at}>{WHEN.format(new Date(event.at))}</time>
-                {event.note ? ` · ${event.note}` : ""}
-              </p>
+            <div className="pb-4 text-sm">
+              <p className={last ? "font-semibold" : "font-medium"}>{timelineText(entry)}</p>
+              <time dateTime={entry.at} className="text-xs text-ink-muted">
+                {WHEN.format(new Date(entry.at))}
+              </time>
             </div>
           </li>
         );
       })}
-      {upcoming.map((step, index) => (
-        <li key={step} className="relative flex gap-3 pb-5 last:pb-0">
-          <span aria-hidden="true" className="relative z-10 grid size-6 flex-none place-items-center rounded-full bg-surface-sunken text-ink-muted">
-            <Circle size={10} />
-          </span>
-          {index < upcoming.length - 1 ? <span aria-hidden="true" className="absolute left-3 top-6 -ml-px h-full w-0.5 bg-line" /> : null}
-          <p className="text-sm text-ink-muted">
-            {ORDER_STATUS[step].label}
-            <span className="sr-only"> (not yet)</span>
-          </p>
-        </li>
-      ))}
     </ol>
   );
 }

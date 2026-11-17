@@ -6,6 +6,10 @@ import path from "node:path";
 // (Path=/auth, SameSite=Strict) works without CORS. Set
 // NEXT_PUBLIC_API_BASE_URL instead to call the API origin directly.
 // Read at build time: rewrites are baked into the build output.
+if (process.env.NODE_ENV === "production" && !process.env.FEMXO_API_ORIGIN?.trim()) {
+  // Rewrites are baked at build time: a build without this would forward every API call to localhost.
+  throw new Error("FEMXO_API_ORIGIN must be set for a production build (the API's address, e.g. https://api.femxo.in).");
+}
 const apiOrigin = (process.env.FEMXO_API_ORIGIN || "http://localhost:3000").replace(/\/$/, "");
 
 // Every femxo-backend route group the admin panel calls. `/admin/dead-letters` is added separately: it
@@ -13,14 +17,15 @@ const apiOrigin = (process.env.FEMXO_API_ORIGIN || "http://localhost:3000").repl
 const API_PREFIXES = [
   "auth", "access", "territories", "sales-territories", "users", "inventory", "catalog", "cms",
   "approvals", "dealer", "sub-dealers", "customers", "orders", "billing", "finance", "wallets", "ledger",
-  "membership", "reports", "notifications", "dashboard", "delivery", "cod", "commission", "settlement",
+  "membership", "reports", "notifications", "dashboard", "delivery", "cod", "commission", "settlement", "sync",
 ];
 
 // Account types used to have their own sign-in pages; there is one now.
 const OLD_PORTALS = "customer|dealer|sub-dealer|retail-partner|super-admin";
 
-// Sent with every page. No CSP yet: the theme script in app/layout.tsx is
-// inline, so a CSP needs a nonce first.
+// The Content-Security-Policy is per request (it carries a nonce): see src/proxy.ts and src/lib/csp.ts.
+
+// Sent with every page.
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -55,15 +60,19 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
   async rewrites() {
-    return [...API_PREFIXES.map((prefix) => `/${prefix}`), "/admin/dead-letters"].map((base) => ({
-      source: `${base}/:path*`,
-      destination: `${apiOrigin}${base}/:path*`,
-    }));
+    const forward = (base: string) => ({ source: `${base}/:path*`, destination: `${apiOrigin}${base}/:path*` });
+    return {
+      // /admin/integrations is both an API route and a panel page. API calls carry a bearer token and
+      // page loads never do, so only the former is forwarded before the filesystem is checked.
+      beforeFiles: ["/admin/integrations"].map((base) => ({ ...forward(base), has: [{ type: "header" as const, key: "authorization" }] })),
+      afterFiles: [...API_PREFIXES.map((prefix) => `/${prefix}`), "/admin/dead-letters", "/admin/audit-logs", "/admin/security-events"].map(forward),
+      fallback: [],
+    };
   },
   async redirects() {
     return [
       // A role panel's index is its dashboard (a 307 here, not a streamed redirect from the page).
-      { source: "/panel/:panel(admin|warehouse|dealer|sub-dealer)", destination: "/panel/:panel/dashboard", permanent: false },
+      { source: "/panel/:panel(admin|warehouse|dealer|sub-dealer|delivery|dispatch|field|finance)", destination: "/panel/:panel/dashboard", permanent: false },
       { source: "/register", destination: "/login", permanent: false },
       { source: "/verify-otp", destination: "/login", permanent: false },
       { source: "/reset-password", destination: "/forgot-password", permanent: false },

@@ -3,6 +3,7 @@
 import { Minus, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { cn, useToast } from "@femxo/ui";
+import { lineCeiling } from "../cart-ops";
 import { CartContext } from "./CartProvider";
 
 const ring = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
@@ -21,7 +22,7 @@ export function CardAction({ variantId, itemName, variant = "block", className }
   const [busy, setBusy] = useState(false);
   if (!ctx) return null;
   const { add, setQuantity, remove } = ctx;
-  const line = ctx.cart?.lines.find((l) => l.variant.id === variantId);
+  const line = ctx.cart?.lines.find((l) => l.variantId === variantId);
   const pill = variant === "pill";
 
   async function onAdd() {
@@ -50,8 +51,8 @@ export function CardAction({ variantId, itemName, variant = "block", className }
     );
   }
 
-  // The same ceiling as the cart page: stock on hand and the per-order limit.
-  const atMax = line.quantity >= Math.min(line.available, line.variant.maxPerOrder);
+  // The same ceiling as the cart page: what the server says is available, and the per-order limit.
+  const atMax = line.quantity >= lineCeiling(line);
   const step = `grid h-11 flex-none cursor-pointer place-items-center text-on-primary transition-colors duration-150 active:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 ${pill ? "w-9" : "w-11"} ${ring}`;
   return (
     <div
@@ -63,14 +64,14 @@ export function CardAction({ variantId, itemName, variant = "block", className }
         type="button"
         className={step}
         aria-label={line.quantity <= 1 ? `Remove ${itemName}` : `Decrease quantity of ${itemName}`}
-        onClick={() => void (line.quantity <= 1 ? remove(line.id) : setQuantity(line.id, line.quantity - 1))}
+        onClick={() => void (line.quantity <= 1 ? remove(line.variantId) : setQuantity(line.variantId, line.quantity - 1))}
       >
         <Minus size={16} strokeWidth={2.5} aria-hidden="true" />
       </button>
       <output aria-live="polite" className="min-w-6 text-center font-display text-[15px] font-bold tabular-nums text-on-primary">
         {line.quantity}
       </output>
-      <button type="button" className={step} disabled={atMax} aria-label={`Increase quantity of ${itemName}`} onClick={() => void setQuantity(line.id, line.quantity + 1)}>
+      <button type="button" className={step} disabled={atMax} aria-label={`Increase quantity of ${itemName}`} onClick={() => void setQuantity(line.variantId, line.quantity + 1)}>
         <Plus size={16} strokeWidth={2.5} aria-hidden="true" />
       </button>
     </div>

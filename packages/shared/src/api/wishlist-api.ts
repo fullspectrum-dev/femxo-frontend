@@ -1,16 +1,18 @@
-import { Wishlist } from "../contracts/catalog";
+import { WishlistEnvelope, type WishlistEntry } from "../contracts/commerce";
 import type { ApiAdapter } from "./adapter";
+import { STORE_BASE } from "./auth-api";
 import { request } from "./request";
 
-/** WishlistApi: the signed-in customer's saved products (401 for a guest). */
+/** WishlistApi: the signed-in customer's saved products (ids only; the page joins them with the catalogue). Up to 200. */
 export function createWishlistApi(adapter: ApiAdapter) {
-  const item = (productId: string) => `/wishlist/${encodeURIComponent(productId)}`;
+  const path = `${STORE_BASE}/me/wishlist`;
   return {
-    list: (signal?: AbortSignal) => request(adapter, { method: "GET", path: "/wishlist", signal }, Wishlist),
-    /** Saving something already saved changes nothing. */
-    add: (productId: string) => request(adapter, { method: "POST", path: "/wishlist", body: { productId } }, Wishlist),
-    /** Removing something that isn't saved changes nothing. */
-    remove: (productId: string) => request(adapter, { method: "DELETE", path: item(productId) }, Wishlist),
+    list: async (signal?: AbortSignal): Promise<WishlistEntry[]> => (await request(adapter, { method: "GET", path, signal }, WishlistEnvelope)).items,
+    /** Replaces the whole list (422 WISHLIST_FULL, PRODUCT_NOT_FOUND). */
+    replace: async (items: readonly { productId: string; variantId?: string | null }[]): Promise<WishlistEntry[]> =>
+      (await request(adapter, { method: "PUT", path, body: { items } }, WishlistEnvelope)).items,
+    /** Removes one product. */
+    remove: async (productId: string): Promise<WishlistEntry[]> => (await request(adapter, { method: "DELETE", path, query: { productId } }, WishlistEnvelope)).items,
   };
 }
 

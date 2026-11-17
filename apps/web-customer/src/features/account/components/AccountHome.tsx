@@ -4,16 +4,17 @@ import { Crown, Heart, LifeBuoy, MapPin, Package, UserRound } from "lucide-react
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { isPrimeMember } from "@femxo/shared/contracts";
 import { Button, Card } from "@femxo/ui";
 import { RequireCustomer } from "@/features/auth/components/Guards";
 import { useSession } from "@/features/auth/components/SessionProvider";
 
 const SECTIONS: { href: string; label: string; hint: string; icon: ReactNode }[] = [
-  { href: "/orders", label: "Orders", hint: "Track, cancel or return", icon: <Package size={22} aria-hidden="true" /> },
+  { href: "/orders", label: "Orders", hint: "Track or cancel", icon: <Package size={22} aria-hidden="true" /> },
   { href: "/wishlist", label: "Wishlist", hint: "Things you've saved", icon: <Heart size={22} aria-hidden="true" /> },
-  { href: "/prime", label: "Prime", hint: "Your plan, card and coupons", icon: <Crown size={22} aria-hidden="true" /> },
+  { href: "/prime", label: "Prime", hint: "Your plan and member prices", icon: <Crown size={22} aria-hidden="true" /> },
   { href: "/account/addresses", label: "Addresses", hint: "Where we deliver", icon: <MapPin size={22} aria-hidden="true" /> },
-  { href: "/account/profile", label: "Profile", hint: "Name, email, birthday", icon: <UserRound size={22} aria-hidden="true" /> },
+  { href: "/account/profile", label: "Profile", hint: "Name and email", icon: <UserRound size={22} aria-hidden="true" /> },
   { href: "/account/support", label: "Help & support", hint: "Ask us anything", icon: <LifeBuoy size={22} aria-hidden="true" /> },
 ];
 
@@ -36,8 +37,8 @@ function Welcome() {
       <Card className="grid gap-1">
         <h1 className="font-display text-2xl font-bold">{user?.name ? `Hello, ${user.name}` : "Hello"}</h1>
         <p className="text-sm text-ink-muted">
-          +91 {user?.mobile}
-          {user?.isPrime ? " · Prime member" : ""}
+          +91 {user?.phone}
+          {isPrimeMember(user) ? " · Prime member" : ""}
         </p>
       </Card>
 

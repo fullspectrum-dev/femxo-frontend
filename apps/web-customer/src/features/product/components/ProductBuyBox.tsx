@@ -1,5 +1,6 @@
 "use client";
 
+import { isPrimeMember } from "@femxo/shared/contracts";
 import { useEffect, useRef, useState } from "react";
 import type { ProductsApi } from "@femxo/shared/api";
 import type { Availability, ProductDetail } from "@femxo/shared/contracts";
@@ -45,12 +46,16 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
       .then((list) => setLive(Object.fromEntries(list.map((entry) => [entry.variantId, entry]))))
       .catch(() => undefined); // the prerendered numbers are still right enough to show
     return () => controller.abort();
-  }, [product.slug, user?.id, user?.isPrime]);
+  }, [product.slug, user?.id, user?.prime.status]);
 
   const variant = product.variants.find((entry) => entry.id === selectedId)!;
   const stock = live[variant.id]?.stock ?? variant.stock;
-  const message = stockMessage(stock);
-  const member = user?.isPrime ?? false;
+  // The catalogue doesn't publish stock yet: say nothing about it rather than claim "In stock".
+  const message = variant.stockKnown === false ? null : stockMessage(stock);
+  // A signed-in customer's own prices (Prime members pay less) replace the prerendered selling price.
+  const price = live[variant.id]?.price ?? variant.price;
+  const primePrice = live[variant.id]?.primePrice ?? variant.primePrice;
+  const member = isPrimeMember(user);
   const limit = Math.max(Math.min(stock, variant.maxPerOrder), 1);
   const quantity = Math.min(wanted, limit);
 
@@ -76,7 +81,7 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
           </div>
         </div>
 
-        <Price size="lg" price={variant.price} mrp={variant.mrp} primePrice={variant.primePrice} member={member} />
+        <Price size="lg" price={price} mrp={variant.mrp} primePrice={primePrice} member={member} />
         <p className="-mt-2 text-xs text-ink-muted">Inclusive of all taxes</p>
 
         <fieldset className="grid gap-2">
@@ -106,9 +111,11 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
         </fieldset>
 
         <div className="grid gap-1">
-          <p role="status" aria-live="polite">
-            <Badge tone={message.tone}>{message.text}</Badge>
-          </p>
+          {message ? (
+            <p role="status" aria-live="polite">
+              <Badge tone={message.tone}>{message.text}</Badge>
+            </p>
+          ) : null}
           {variant.bestBefore ? <p className="text-sm text-ink-muted">Best before {formatBestBefore(variant.bestBefore)}</p> : null}
         </div>
 
@@ -131,7 +138,7 @@ export function ProductBuyBox({ product, products }: { product: ProductDetail; p
         <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur md:hidden">
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-xs text-ink-muted">{variant.label}</p>
-            <p className="text-lg font-bold tabular-nums">{formatINR(member && variant.primePrice < variant.price ? variant.primePrice : variant.price)}</p>
+            <p className="text-lg font-bold tabular-nums">{formatINR(member && primePrice < price ? primePrice : price)}</p>
           </div>
           {stock > 0 ? (
             <CardAction variantId={variant.id} itemName={`${product.name}, ${variant.label}`} className="w-40" />

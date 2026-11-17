@@ -76,9 +76,12 @@ export class AuthApiError extends Error {
   readonly code: AuthErrorCode;
   readonly status: number | undefined;
   readonly retryAfterSeconds: number | undefined;
+  /** The API's own wording (4xx only), for screens that explain a refusal better than the generic text. */
+  readonly apiMessage: string | undefined;
 
-  constructor(code: AuthErrorCode, message: string, status?: number, retryAfterSeconds?: number) {
+  constructor(code: AuthErrorCode, message: string, status?: number, retryAfterSeconds?: number, apiMessage?: string) {
     super(message);
+    this.apiMessage = apiMessage;
     this.name = "AuthApiError";
     this.code = code;
     this.status = status;
@@ -147,7 +150,8 @@ function toError(path: string, response: TransportResponse): AuthApiError {
         (response.status >= 500
           ? "Sign-in is temporarily unavailable. Please try again shortly."
           : "We couldn't complete that request. Please try again.");
-  return new AuthApiError(code, message, response.status, response.retryAfterSeconds);
+  const apiMessage = parsed.success && response.status < 500 ? parsed.data.error.message : undefined;
+  return new AuthApiError(code, message, response.status, response.retryAfterSeconds, apiMessage);
 }
 
 function parseBody<T>(path: string, schema: z.ZodType<T>, response: TransportResponse): T {

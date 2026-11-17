@@ -32,7 +32,7 @@ export function CartBar() {
             <span className="text-xs font-medium opacity-90">
               {cart.itemCount} {cart.itemCount === 1 ? "item" : "items"}
             </span>
-            <span className="text-base font-bold tabular-nums">{formatINR(cart.breakup.total)}</span>
+            <span className="text-base font-bold tabular-nums">{formatINR(cart.total)}</span>
           </span>
         </span>
         <span className="flex items-center gap-1 text-sm font-bold">

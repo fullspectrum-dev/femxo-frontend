@@ -1,9 +1,10 @@
+import type { ComponentType } from "react";
 import type { ButtonVariant, ConfirmKind, StatusKey, TimelineStep } from "@/components/admin-ui";
 import type { Cell, DatasetKey, RecordRow } from "../data/records";
 import type { ModuleKey } from "../nav";
 
 /** How a cell value is shown. Money cells hold paise. */
-export type CellFormat = "text" | "inr" | "count" | "date" | "datetime" | "gst" | "units" | "status";
+export type CellFormat = "text" | "inr" | "inr2" | "count" | "date" | "datetime" | "gst" | "units" | "status";
 
 export interface ColumnSpec {
   key: string;
@@ -65,6 +66,8 @@ export interface EditSpec {
     options?: Record<string, readonly string[]>;
   }>;
   toast: (values: FormValues) => string;
+  /** Records the Edit button is offered for (e.g. only draft applications). All when omitted. */
+  when?: (row: RecordRow) => boolean;
 }
 
 export interface CreateSpec {
@@ -98,7 +101,13 @@ export interface ActionSpec {
     confirmLabel: string;
     /** Asks for a written reason (kept in the audit log) before the action runs. Live mode only. */
     reason?: { label: string; min: number };
+    /** Asks to choose one option (e.g. the approver) before the action runs. Live mode only. */
+    pick?: { label: string; options: (row: RecordRow) => Promise<readonly { value: string; label: string }[]> };
   };
+  /** Hidden from everyone but a Super Admin (the server refuses the rest anyway). */
+  superAdminOnly?: boolean;
+  /** A backend permission the action needs (Super Admins always pass); hidden from users without it. */
+  requires?: string;
   toast: (row: RecordRow) => string;
   patch?: (row: RecordRow) => Record<string, Cell>;
 }
@@ -127,6 +136,20 @@ export interface ViewSpec {
   readOnly?: boolean;
   empty: { title: string; message: string };
   pageSize?: number;
+  /** Live mode: on/off filters shown above the list (e.g. "Assigned to me"); the keys that are on reach `list` as `flags`. */
+  filters?: readonly { key: string; label: string }[];
+  /** Live mode: more of the record in the detail drawer (history, assignments). `onChanged` refreshes the list. */
+  extra?: ComponentType<{ row: RecordRow; onChanged: () => void }>;
+  /** Live mode: a card above the list (e.g. a setting for the whole view). */
+  banner?: ComponentType<{ from?: string; to?: string }>;
+  /** Live mode: first and last day inputs above the list; they reach `list` as `from` and `to`. */
+  dateRange?: boolean;
+  /** No button row in the detail drawer: the record has its own buttons in `extra`. */
+  noFooter?: boolean;
+  /** Live mode: smallest and largest amount (₹) inputs above the list; they reach `list` as `minPaise` and `maxPaise`. */
+  amountRange?: boolean;
+  /** A whole screen instead of the list (e.g. the reconciliation report). Needs no dataset service. */
+  custom?: ComponentType;
 }
 
 export interface ModuleSpec {

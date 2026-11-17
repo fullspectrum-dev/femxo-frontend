@@ -16,8 +16,6 @@ export type SessionStatus = "checking" | "signed-in" | "signed-out" | "unavailab
 interface SessionValue {
   status: SessionStatus;
   user: Customer | null;
-  /** A first sign-in that still has to give a name. */
-  isNewUser: boolean;
   /** The customer chose to sign out (as opposed to the session ending by itself): the page that asked decides where to go. */
   leftOnPurpose: boolean;
   signIn(session: Session): void;
@@ -29,7 +27,6 @@ interface SessionValue {
 interface SessionState {
   status: SessionStatus;
   user: Customer | null;
-  isNewUser: boolean;
   leftOnPurpose: boolean;
   /** Seconds until the access token should be renewed; null when there is none. */
   renewAfter: number | null;
@@ -45,7 +42,6 @@ const RENEW_EARLY_SECONDS = 60;
 const noSession = (status: SessionStatus, tokenVersion: number, leftOnPurpose = false): SessionState => ({
   status,
   user: null,
-  isNewUser: false,
   leftOnPurpose,
   renewAfter: null,
   tokenVersion,
@@ -62,13 +58,14 @@ export function SessionProvider({ auth, children }: { auth?: AuthApi; children: 
   const apiRef = useRef(auth);
   const api = useCallback(() => (apiRef.current ??= getAuthApi()), []);
   const [refresh] = useState(() => createRefreshGate(() => api().refresh()));
+  const userRef = useRef<Customer | null>(null);
 
   const applySession = useCallback((session: Session) => {
     setAccessToken(session.accessToken);
+    userRef.current = session.user;
     setState((current) => ({
       status: "signed-in",
       user: session.user,
-      isNewUser: session.isNewUser,
       leftOnPurpose: false,
       renewAfter: Math.max(1, session.expiresIn - RENEW_EARLY_SECONDS),
       tokenVersion: current.tokenVersion + 1,
@@ -77,13 +74,18 @@ export function SessionProvider({ auth, children }: { auth?: AuthApi; children: 
 
   const check = useCallback(async () => {
     try {
-      applySession(await refresh());
+      // The refresh answer carries only a token; the customer is read once, then kept across renewals.
+      const grant = await refresh();
+      setAccessToken(grant.accessToken);
+      const user = userRef.current ?? (await api().me(grant.accessToken));
+      applySession({ ...grant, user });
     } catch (error) {
       setAccessToken(undefined);
+      userRef.current = null;
       // No valid session is a plain sign-out; anything else we couldn't verify, so don't claim the customer is signed out.
       setState((current) => noSession(isApiError(error, "UNAUTHENTICATED") ? "signed-out" : isApiError(error, "NOT_AVAILABLE") ? "coming-soon" : "unavailable", current.tokenVersion + 1));
     }
-  }, [applySession, refresh]);
+  }, [applySession, refresh, api]);
 
   // On load: is the refresh cookie still good? Asked once the page has painted, so it never delays what the visitor came to see.
   useEffect(() => whenIdle(() => void check()), [check]);
@@ -99,7 +101,6 @@ export function SessionProvider({ auth, children }: { auth?: AuthApi; children: 
     () => ({
       status: state.status,
       user: state.user,
-      isNewUser: state.isNewUser,
       leftOnPurpose: state.leftOnPurpose,
       signIn: applySession,
       async signOut() {
@@ -107,16 +108,20 @@ export function SessionProvider({ auth, children }: { auth?: AuthApi; children: 
           await api().logout();
         } finally {
           setAccessToken(undefined);
+          userRef.current = null;
           setState((current) => noSession("signed-out", current.tokenVersion + 1, true));
         }
       },
-      setUser: (user) => setState((current) => ({ ...current, user })),
+      setUser: (user) => {
+        userRef.current = user;
+        setState((current) => ({ ...current, user }));
+      },
       retry() {
         setState((current) => ({ ...noSession("checking", current.tokenVersion + 1) }));
         void check();
       },
     }),
-    [state.status, state.user, state.isNewUser, state.leftOnPurpose, applySession, api, check]
+    [state.status, state.user, state.leftOnPurpose, applySession, api, check]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

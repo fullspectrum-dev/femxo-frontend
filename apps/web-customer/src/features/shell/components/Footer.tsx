@@ -36,7 +36,7 @@ export function Footer() {
             <Image src="/images/femxo-mark.png" alt="" width={390} height={570} sizes="20px" className="h-7 w-auto" />
             <span className="font-display text-lg font-bold text-primary">Femxo</span>
           </Link>
-          <p className="max-w-xs text-sm text-ink-muted">Staples and daily needs, delivered across Bihar. Pay by UPI, card, net banking or cash on delivery.</p>
+          <p className="max-w-xs text-sm text-ink-muted">Staples and daily needs, delivered across Bihar. All prices include GST.</p>
         </div>
 
         {GROUPS.map((group) => (
@@ -62,7 +62,7 @@ export function Footer() {
             <Crown size={18} className="text-gold" aria-hidden="true" />
             {t("shell.footer.prime")}
           </span>
-          <span className="text-sm text-white/85">Member prices, free delivery and members-only coupons.</span>
+          <span className="text-sm text-white/85">Member prices on the Femxo store.</span>
           <span className="mt-1 font-display text-sm font-semibold text-gold">See plans →</span>
         </Link>
       </div>

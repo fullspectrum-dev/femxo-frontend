@@ -1,11 +1,10 @@
 /*
  * The one seam between the storefront and its data. Domain clients build an
- * ApiRequest; an adapter delivers it: HttpAdapter over the network,
- * MockAdapter to in-browser handlers serving the same paths. Swapping the
- * adapter is the only change needed to connect femxo-backend.
+ * ApiRequest; an adapter delivers it: the HttpAdapter over the network, wrapped by
+ * the store adapter that maps femxo-backend's public catalog onto the storefront's contracts.
  */
 
-export type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type QueryValue = string | number | boolean | readonly string[] | null | undefined;
 

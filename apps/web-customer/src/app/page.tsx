@@ -1,12 +1,13 @@
 import { cacheLife } from "next/cache";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Crown, MapPin, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowRight, Crown, MapPin, ShieldCheck } from "lucide-react";
 import { ErrorState, buttonClasses } from "@femxo/ui";
 import { BannerRow } from "@/features/catalog/components/BannerRow";
 import { CategoryTiles } from "@/features/catalog/components/CategoryTiles";
 import { ProductRail } from "@/features/catalog/components/ProductRail";
 import type { Category, ProductSummary } from "@femxo/shared/contracts";
+import { STORE_BANNERS } from "@femxo/shared/api";
 import { serverProducts, serverSearch } from "@/lib/server-api";
 import { t } from "@/i18n";
 
@@ -40,10 +41,14 @@ export default async function HomePage() {
   const home = await getHome();
   if (!home) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-10">
+      <>
         <h1 className="sr-only">{t("home.title")}</h1>
-        <ErrorState title={t("home.unavailable.title")} message={t("home.unavailable.message")} />
-      </div>
+        {/* The offers are static artwork, so they still show while the catalog is down. */}
+        <BannerRow banners={STORE_BANNERS} />
+        <div className="mx-auto w-full max-w-7xl px-4 py-10">
+          <ErrorState title={t("home.unavailable.title")} message={t("home.unavailable.message")} />
+        </div>
+      </>
     );
   }
   return (
@@ -89,7 +94,7 @@ function HomeHero() {
         <Crown size={28} aria-hidden="true" className="flex-none md:size-8" />
         <span className="grid flex-1 gap-1">
           <span className="font-display text-base font-bold leading-tight md:text-2xl">Prime prices on everything</span>
-          <span className="text-xs md:text-sm">From ₹99 a month, with free delivery.</span>
+          <span className="text-xs md:text-sm">Member prices on your orders.</span>
         </span>
         <span className="flex flex-none items-center gap-1 font-display text-sm font-semibold">
           <span className="hidden md:inline">See plans</span>
@@ -102,14 +107,13 @@ function HomeHero() {
 
 const VALUES = [
   { icon: MapPin, title: "Across Bihar", text: "Set your pincode once" },
-  { icon: Wallet, title: "Pay your way", text: "UPI, card or cash on delivery" },
-  { icon: ShieldCheck, title: "Cart kept 7 days", text: "Pick up where you left off" },
+  { icon: ShieldCheck, title: "GST included", text: "The price you see is the price you pay" },
 ] as const;
 
 /** Three plain facts about shopping here, each one true of the store today. */
 function ValueStrip() {
   return (
-    <ul className="mx-auto grid w-full max-w-7xl grid-cols-3 gap-2 px-4 pt-3 md:gap-3">
+    <ul className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-2 px-4 pt-3 md:gap-3">
       {VALUES.map(({ icon: Icon, title, text }) => (
         <li key={title} className="flex items-center gap-2 rounded-control border border-line bg-surface p-2 md:gap-3 md:rounded-card md:p-4">
           <span className="grid size-7 flex-none place-items-center rounded-lg bg-primary-soft text-primary md:size-9 md:rounded-control">

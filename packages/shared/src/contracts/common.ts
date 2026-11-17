@@ -16,32 +16,70 @@ export const Limit = z.number().int().min(1).max(MAX_PAGE_SIZE);
 /** A cursor page: `{ items, nextCursor }`, at most 100 items. */
 export const page = <T extends z.ZodType>(item: T) => z.object({ items: z.array(item).max(MAX_PAGE_SIZE), nextCursor: Cursor });
 
-export const ApiErrorCode = z.enum([
-  "VALIDATION_FAILED", // 422
-  "IDEMPOTENCY_KEY_REQUIRED", // 400
-  "IDEMPOTENCY_MISMATCH", // 422: same key, different body
+/**
+ * Error codes the storefront has a message for. The backend's list is open (every module adds its own,
+ * e.g. OTP_INVALID or ACCOUNT_BLOCKED), so the wire value is any string: `ApiError.code` is a string, and
+ * these are only the ones the UI branches on. Unknown codes still arrive with the backend's own message.
+ */
+export const KNOWN_ERROR_CODES = [
+  // From femxo-backend (libs/http, identity OTP service, customer auth)
+  "VALIDATION_ERROR", // 400
+  "BAD_REQUEST", // 400, malformed JSON
   "UNAUTHENTICATED", // 401
   "FORBIDDEN", // 403
   "NOT_FOUND", // 404
-  "OUT_OF_STOCK", // 409, details: { variantId, available }
-  "PRICE_CHANGED", // 409, details: { lines }
-  "CART_EXPIRED", // 410
-  "COUPON_INVALID", // 422, details: { reason }
-  "ORDER_STATE", // 409: the order is not in a state that allows this (cancel after packing, retry of a paid order)
-  "NOT_SERVICEABLE", // 422
-  "OTP_INVALID", // 422, details: { attemptsLeft }
-  "OTP_EXPIRED", // 422
-  "RATE_LIMITED", // 429 + Retry-After (OTP lockout, resend)
-  "PAYMENT_FAILED", // 402
-  "INTERNAL", // 500
-  "NOT_AVAILABLE", // 503: a feature the backend does not offer yet (not an outage)
-]);
-export type ApiErrorCode = z.infer<typeof ApiErrorCode>;
+  "OTP_INVALID", // 400: wrong, expired or used code (the answer never says which)
+  "OTP_RESEND_TOO_SOON", // 429 + Retry-After
+  "OTP_TOO_MANY_ATTEMPTS", // 429 + Retry-After
+  "TOO_MANY_ATTEMPTS", // 429 + Retry-After (per phone / per IP window)
+  "OTP_NOT_CONFIGURED", // 503: phone sign-in is not set up on the server
+  "ACCOUNT_BLOCKED", // 403
+  "SIGNUP_TOKEN_INVALID", // 400: the verified-phone proof is used up or expired
+  "PHONE_ALREADY_REGISTERED", // 409
+  "TERRITORY_NOT_FOUND", // 422: unknown or retired location
+  "INTERNAL_ERROR", // 500
+  // Raised by the storefront's own adapters
+  "INTERNAL", // anything we couldn't classify: network down, 5xx without an envelope, contract drift
+  "NOT_AVAILABLE", // 503: a feature femxo-backend does not offer yet (cart, orders, ...); not an outage
+  // Contracts for features that are still design-first (cart, checkout, orders)
+  "VALIDATION_FAILED",
+  "IDEMPOTENCY_KEY_REQUIRED",
+  "IDEMPOTENCY_MISMATCH",
+  "OUT_OF_STOCK",
+  "PRICE_CHANGED",
+  "CART_EXPIRED",
+  "COUPON_INVALID",
+  "ORDER_STATE",
+  "NOT_SERVICEABLE",
+  "OTP_EXPIRED",
+  "RATE_LIMITED",
+  "PAYMENT_FAILED",
+  // Cart, checkout, orders and payments (ADR 0020, 0021)
+  "CART_CHANGED",
+  "CART_EMPTY",
+  "VARIANT_UNAVAILABLE",
+  "INSUFFICIENT_STOCK",
+  "CHECKOUT_IN_PROGRESS",
+  "ADDRESS_NOT_SERVICEABLE",
+  "COD_NOT_AVAILABLE",
+  "COD_NOT_ELIGIBLE",
+  "ORDER_TOO_LARGE",
+  "ORDER_NOT_CANCELLABLE",
+  "ORDER_DISPATCHED",
+  "PAYMENT_WINDOW_LAPSED",
+  "PAYMENT_PROVIDER_UNAVAILABLE",
+  "INVALID_SIGNATURE",
+  "NOT_A_BUYER",
+  "REVIEW_EXISTS",
+] as const;
+export type KnownErrorCode = (typeof KNOWN_ERROR_CODES)[number];
+/** Any code string; the known ones autocomplete. */
+export type ApiErrorCode = KnownErrorCode | (string & {});
 
-/** The backend's error envelope (same as femxo-backend /auth). */
+/** The backend's error envelope: `{ error: { code, message } }` (details are optional and only some routes send them). */
 export const ApiErrorBody = z.object({
   error: z.object({
-    code: ApiErrorCode,
+    code: z.string().min(1),
     message: z.string(),
     details: z.record(z.string(), z.unknown()).optional(),
   }),

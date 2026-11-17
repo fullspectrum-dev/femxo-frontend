@@ -1,6 +1,6 @@
 "use client";
 
-import { createAddressApi, createAuthApi, createCartApi, createCheckoutApi, createHttpAdapter, createOrdersApi, createPaymentApi, createPrimeApi, createProductsApi, createSearchApi, createStoreAdapter, createSupportApi, createWishlistApi, shareReads, withAuth } from "@femxo/shared/api";
+import { createAddressApi, createAuthApi, createCartApi, createHttpAdapter, createOrdersApi, createPrimeApi, createProductsApi, createSearchApi, createStoreAdapter, createSupportApi, createWishlistApi, shareReads, withAuth } from "@femxo/shared/api";
 import type { ApiAdapter } from "@femxo/shared/api";
 import { getAccessToken } from "./token";
 
@@ -23,11 +23,9 @@ function authedAdapter() {
 export const getAuthApi = () => createAuthApi(authedAdapter());
 export const getSearchApi = () => createSearchApi(authedAdapter());
 export const getProductsApi = () => createProductsApi(authedAdapter());
-export const getCartApi = () => createCartApi(authedAdapter());
+export const getCartApi = () => createCartApi(authedAdapter(), getProductsApi());
 export const getWishlistApi = () => createWishlistApi(authedAdapter());
 export const getAddressApi = () => createAddressApi(authedAdapter());
-export const getCheckoutApi = () => createCheckoutApi(authedAdapter());
-export const getPaymentApi = () => createPaymentApi(authedAdapter());
 export const getOrdersApi = () => createOrdersApi(authedAdapter());
 export const getSupportApi = () => createSupportApi(authedAdapter());
 export const getPrimeApi = () => createPrimeApi(authedAdapter());

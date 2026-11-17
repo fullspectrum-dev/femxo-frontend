@@ -3,20 +3,19 @@
 import { Truck } from "lucide-react";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
-import type { ProductsApi } from "@femxo/shared/api";
-import { isApiError } from "@femxo/shared/api";
+import { userMessage } from "@femxo/shared/api";
+import type { AddressApi } from "@femxo/shared/api";
 import type { Serviceability } from "@femxo/shared/contracts";
 import { Pincode } from "@femxo/shared/contracts";
 import { Button, TextField } from "@femxo/ui";
-import { getProductsApi } from "@/lib/api";
+import { pincodeVerdict } from "@/features/addresses/location-options";
+import { getAddressApi } from "@/lib/api";
 
 type Outcome = { kind: "result"; value: Serviceability } | { kind: "error"; message: string };
 
-const days = ({ min, max }: { min: number; max: number }) => (min === max ? `${min} day${min === 1 ? "" : "s"}` : `${min}–${max} days`);
-
-/** "Can you deliver to me?": a pincode in, a plain answer out. An unserved pincode is an answer, not an error. */
-export function PincodeCheck({ products }: { products?: ProductsApi }) {
-  const apiRef = useRef(products);
+/** "Can you deliver to me?": a pincode in, a plain answer out. An unserved or unknown pincode is an answer, not an error. */
+export function PincodeCheck({ api }: { api?: AddressApi }) {
+  const apiRef = useRef(api);
   const [value, setValue] = useState("");
   const [fieldError, setFieldError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -33,16 +32,17 @@ export function PincodeCheck({ products }: { products?: ProductsApi }) {
     setFieldError(undefined);
     setBusy(true);
     try {
-      const api = (apiRef.current ??= getProductsApi());
-      setOutcome({ kind: "result", value: await api.serviceability(parsed.data) });
+      setOutcome({ kind: "result", value: await (apiRef.current ??= getAddressApi()).serviceability(parsed.data) });
     } catch (error) {
-      setOutcome({ kind: "error", message: isApiError(error) ? error.message : "We couldn't check that right now. Please try again." });
+      setOutcome({ kind: "error", message: userMessage(error, "We couldn't check that right now. Please try again.") });
     } finally {
       setBusy(false);
     }
   }
 
   const result = outcome?.kind === "result" ? outcome.value : null;
+  const verdict = result ? pincodeVerdict(result) : null;
+  const served = result?.locations.filter((l) => l.serviceable).map((l) => l.name) ?? [];
 
   return (
     <section aria-labelledby="pincode-heading" className="grid gap-3 rounded-card border border-line bg-surface p-4">
@@ -65,15 +65,13 @@ export function PincodeCheck({ products }: { products?: ProductsApi }) {
           Check
         </Button>
       </form>
-      <div role="status" aria-live="polite" className="text-sm">
-        {result?.serviceable ? (
-          <p className="text-success">
-            Delivers to {result.pincode}
-            {result.district ? `, ${result.district}` : ""} in {days(result.etaDays!)}.{" "}
-            <span className="text-ink-muted">{result.codAvailable ? "Cash on delivery available." : "Cash on delivery isn't available here."}</span>
+      <div role="status" aria-live="polite" className="text-sm" data-testid="pincode-result">
+        {verdict ? (
+          <p className={verdict.tone === "ok" ? "text-success" : "text-danger"}>
+            {verdict.text}
+            {verdict.tone === "ok" && served.length ? <span className="text-ink-muted"> Covers {served.join(", ")}.</span> : null}
           </p>
         ) : null}
-        {result && !result.serviceable ? <p className="text-danger">Sorry, we don&apos;t deliver to {result.pincode} yet.</p> : null}
         {outcome?.kind === "error" ? <p className="text-danger">{outcome.message}</p> : null}
       </div>
     </section>

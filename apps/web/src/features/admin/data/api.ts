@@ -1,20 +1,24 @@
 import { AuthApiError } from "@/features/auth/services/auth-client";
 import type { ActionSpec, FormValues, ViewSpec } from "../modules/types";
 import { customersService, invoicesService, ordersService } from "../services/sales.service";
-import { payoutsService, walletsService } from "../services/finance.service";
+import { payoutAccountChangesService, payoutsService, walletsService } from "../services/finance.service";
 import { subscriptionsService, plansService } from "../services/membership.service";
 import { deadLettersService, reportsService, templatesService } from "../services/ops.service";
 import { dealersService, subDealersService } from "../services/partners.service";
 import { adjustmentsService, stockService } from "../services/stock.service";
 import { productsService } from "../services/products.service";
 import { rolesService } from "../services/roles.service";
+import { auditLogService, deliveriesService, integrationsService, securityEventsService } from "../services/system.service";
 import { transfersService } from "../services/transfers.service";
 import type { LiveService } from "../services/types";
 import { usersService } from "../services/users.service";
 import { approvalsService } from "../services/approvals.service";
+import { paymentsService, refundsService } from "../services/payments.service";
+import { reviewsService } from "../services/reviews.service";
 import { codTasksService, returnsService, routesService } from "../services/logistics.service";
 import { brandsService, categoriesService, commissionService, warehousesService } from "../services/setup.service";
 import { ApiRefusal } from "./errors";
+import { describeError } from "./error-messages";
 import type { ListQuery, Page } from "./errors";
 import type { Cell, DatasetKey, RecordRow } from "./records";
 
@@ -40,6 +44,7 @@ const SERVICES: Partial<Record<DatasetKey, LiveService>> = {
   invoices: invoicesService,
   wallets: walletsService,
   settlements: payoutsService,
+  payoutAccountChanges: payoutAccountChangesService,
   stock: stockService,
   adjustments: adjustmentsService,
   primeSubscriptions: subscriptionsService,
@@ -47,6 +52,10 @@ const SERVICES: Partial<Record<DatasetKey, LiveService>> = {
   reports: reportsService,
   templates: templatesService,
   deadLetters: deadLettersService,
+  auditLog: auditLogService,
+  securityEvents: securityEventsService,
+  deliveries: deliveriesService,
+  integrations: integrationsService,
   approvals: approvalsService,
   returns: returnsService,
   deliveryRoutes: routesService,
@@ -55,6 +64,9 @@ const SERVICES: Partial<Record<DatasetKey, LiveService>> = {
   warehouses: warehousesService,
   brands: brandsService,
   categories: categoriesService,
+  payments: paymentsService,
+  refunds: refundsService,
+  reviews: reviewsService,
 };
 
 /** Whether the view has a backend route. */
@@ -94,13 +106,13 @@ export function forMode(view: ViewSpec): ViewSpec {
   return adapted;
 }
 
-// A refused call surfaces like the mock's errors, so screens handle one shape.
+// A refused call surfaces in one shape, with wording a person can act on (see error-messages.ts).
 function translate(error: unknown): never {
-  if (error instanceof AuthApiError) {
-    if (error.status === 403) throw new ApiRefusal("FORBIDDEN", error.message);
-    if (error.status === 404) throw new ApiRefusal("NOT_FOUND", error.message);
-    // The API's own reason (e.g. "Role is assigned to users") is what the user needs to read.
-    if (error.status === 409 || error.status === 422 || error.status === 400) throw new ApiRefusal("INVALID_TRANSITION", error.message);
+  if (error instanceof AuthApiError && error.status !== undefined) {
+    const message = describeError(error);
+    if (error.status === 403) throw new ApiRefusal("FORBIDDEN", message);
+    if (error.status === 404) throw new ApiRefusal("NOT_FOUND", message);
+    if (error.status >= 400 && error.status < 500) throw new ApiRefusal("INVALID_TRANSITION", message);
   }
   throw error;
 }
@@ -109,7 +121,7 @@ export async function listRecords(dataset: DatasetKey, query: ListQuery): Promis
   const service = SERVICES[dataset];
   if (!service) throw new Error(`${dataset} has no backend yet`);
   try {
-    return await service.list({ q: query.q, status: query.status, cursor: query.cursor, limit: query.limit });
+    return await service.list({ q: query.q, status: query.status, cursor: query.cursor, limit: query.limit, flags: query.flags, from: query.from, to: query.to, minPaise: query.minPaise, maxPaise: query.maxPaise });
   } catch (error) {
     return translate(error);
   }
@@ -136,11 +148,11 @@ export async function updateRecord(dataset: DatasetKey, row: RecordRow, values: 
 }
 
 /** Actions without a target state (e.g. a report download) still call the API; the row's state is kept. */
-export async function applyAction(dataset: DatasetKey, row: RecordRow, action: ActionSpec, reason?: string): Promise<RecordRow> {
+export async function applyAction(dataset: DatasetKey, row: RecordRow, action: ActionSpec, reason?: string, picked?: string): Promise<RecordRow> {
   const service = SERVICES[dataset];
   if (!service?.transition) throw new Error(`${dataset} has no actions yet`);
   try {
-    return await service.transition(row, action.key, action.to ?? row.status, { reason });
+    return await service.transition(row, action.key, action.to ?? row.status, { reason, picked });
   } catch (error) {
     return translate(error);
   }

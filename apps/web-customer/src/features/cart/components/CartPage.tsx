@@ -1,17 +1,13 @@
 "use client";
 
-import { Crown, X } from "lucide-react";
+import { X } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { formatINR } from "@femxo/shared";
-import { buttonClasses, cn, EmptyState, ErrorState, Skeleton } from "@femxo/ui";
-import { useSession } from "@/features/auth/components/SessionProvider";
+import { Button, buttonClasses, cn, EmptyState, ErrorState, Skeleton } from "@femxo/ui";
 import { BillSummary } from "./BillSummary";
-import { CartLineItem, lineProblem } from "./CartLineItem";
+import { CartLineItem } from "./CartLineItem";
 import { useCart } from "./CartProvider";
-import { CouponBox } from "./CouponBox";
-
-/** Free delivery starts here (paise); the server's bill is the truth, this only drives the nudge. */
-const FREE_DELIVERY_FROM = 49900;
 
 function CartSkeleton() {
   return (
@@ -23,20 +19,26 @@ function CartSkeleton() {
   );
 }
 
-/** The cart page: items, coupon, bill and the way on to checkout. */
+/** The cart page: items with the server's prices and stock, warnings that block checkout until they are dealt with, the bill and the way on. */
 export function CartPage() {
-  const { cart, status, notice, dismissNotice, refresh } = useCart();
-  const { user } = useSession();
+  const { cart, status, notice, dismissNotice, refresh, confirmPrices, fitToStock } = useCart();
+  const [fixing, setFixing] = useState(false);
+
+  async function run(action: () => Promise<unknown>) {
+    setFixing(true);
+    await action();
+    setFixing(false);
+  }
 
   let body;
-  if (!cart && status === "coming-soon") {
+  if (status === "signed-out") {
     body = (
       <EmptyState
-        title="Your cart opens soon"
-        message="Ordering isn't switched on yet. Browse the catalogue now and add items as soon as it opens."
+        title="Sign in to see your cart"
+        message="Your cart is saved to your account, so it follows you from phone to phone."
         action={
-          <Link href="/" className={buttonClasses()}>
-            Keep browsing
+          <Link href="/login?next=/cart" className={buttonClasses()}>
+            Sign in
           </Link>
         }
       />
@@ -49,7 +51,7 @@ export function CartPage() {
     body = (
       <EmptyState
         title="Your cart is empty"
-        message="Add something you need and it will wait here for 7 days."
+        message="Add something you need and it will wait here for a few days."
         action={
           <Link href="/" className={buttonClasses()}>
             Start shopping
@@ -58,83 +60,65 @@ export function CartPage() {
       />
     );
   } else {
-    const blocked = cart.lines.some((line) => lineProblem(line) !== null);
-    const primeSaving = cart.lines.reduce((sum, line) => sum + (line.variant.price - line.variant.primePrice) * line.quantity, 0);
-    const toFreeDelivery = FREE_DELIVERY_FROM - (cart.breakup.total - cart.breakup.delivery);
+    const blocked = !cart.canCheckout;
+    const stockProblem = cart.hasStockIssue || cart.lines.some((l) => l.problem !== null || l.sufficient === false);
+    const checkoutLink = (extra: string, label: string) => (
+      <Link
+        href="/checkout"
+        aria-disabled={blocked || undefined}
+        onClick={(event) => blocked && event.preventDefault()}
+        className={buttonClasses({ size: "lg", className: cn(extra, blocked && "pointer-events-none opacity-60") })}
+      >
+        {label}
+      </Link>
+    );
 
     body = (
       <div className="grid items-start gap-5 lg:grid-cols-[1fr_22rem]">
-        <section aria-labelledby="items-heading" className="rounded-card border border-line bg-surface px-4 shadow-card">
-          <h2 id="items-heading" className="sr-only">
-            Items in your cart
-          </h2>
-          {cart.breakup.delivery > 0 && toFreeDelivery > 0 ? (
-            <div className="mt-4 grid gap-2 rounded-control bg-gold-soft px-3 py-2.5">
-              <p className="text-sm">
-                Add <strong className="tabular-nums">{formatINR(toFreeDelivery)}</strong> more for free delivery.
-              </p>
-              <div
-                role="progressbar"
-                aria-label="Progress to free delivery"
-                aria-valuemin={0}
-                aria-valuemax={FREE_DELIVERY_FROM}
-                aria-valuenow={FREE_DELIVERY_FROM - toFreeDelivery}
-                className="h-1.5 overflow-hidden rounded-full bg-surface"
-              >
-                <div className="h-full rounded-full bg-gold-deep transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${Math.round(((FREE_DELIVERY_FROM - toFreeDelivery) / FREE_DELIVERY_FROM) * 100)}%` }} />
-              </div>
+        <div className="grid gap-4">
+          {cart.hasPriceChange ? (
+            <div role="alert" data-testid="price-change-banner" className="grid gap-2 rounded-card border border-warning bg-warning-soft px-4 py-3">
+              <p className="text-sm font-semibold text-ink">Some prices changed since you added them.</p>
+              <p className="text-sm text-ink">Check the items marked below. You can only check out after you accept the new prices.</p>
+              <Button size="sm" className="w-max" busy={fixing} onClick={() => void run(confirmPrices)}>
+                Accept new prices
+              </Button>
             </div>
           ) : null}
-          <ul>
-            {cart.lines.map((line) => (
-              <CartLineItem key={line.id} line={line} />
-            ))}
-          </ul>
-        </section>
+          {stockProblem ? (
+            <div role="alert" data-testid="stock-banner" className="grid gap-2 rounded-card border border-danger bg-danger-soft px-4 py-3">
+              <p className="text-sm font-semibold text-ink">Some items aren&apos;t available in the quantity you chose.</p>
+              <Button size="sm" variant="secondary" className="w-max" busy={fixing} onClick={() => void run(fitToStock)}>
+                Fix my cart
+              </Button>
+            </div>
+          ) : null}
+          <section aria-labelledby="items-heading" className="rounded-card border border-line bg-surface px-4 shadow-card">
+            <h2 id="items-heading" className="sr-only">
+              Items in your cart
+            </h2>
+            <ul>
+              {cart.lines.map((line) => (
+                <CartLineItem key={line.id} line={line} />
+              ))}
+            </ul>
+          </section>
+        </div>
 
         <div className="grid gap-4 lg:sticky lg:top-24">
-          {!user?.isPrime && primeSaving > 0 ? (
-            <Link href="/prime" className="flex items-center gap-2 rounded-card border border-gold bg-gold-soft px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-focus">
-              <Crown size={18} className="text-gold-deep" aria-hidden="true" />
-              Save {formatINR(primeSaving)} more on this cart, plus free delivery, with Prime
-            </Link>
-          ) : null}
-          <CouponBox />
           <BillSummary cart={cart} />
-          <Link
-            href="/checkout"
-            aria-disabled={blocked || undefined}
-            onClick={(event) => blocked && event.preventDefault()}
-            className={buttonClasses({ size: "lg", block: true, className: cn("hidden md:inline-flex", blocked && "pointer-events-none opacity-60") })}
-          >
-            Proceed to checkout
-          </Link>
+          {checkoutLink("hidden w-full md:inline-flex", "Proceed to checkout")}
           {/* Phones: total and checkout pinned above the bottom bar, one tap from anywhere in the list. */}
           <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 flex items-center gap-3 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur md:hidden">
             <div className="min-w-0 flex-1 leading-tight">
               <p className="text-xs text-ink-muted">
                 {cart.itemCount} {cart.itemCount === 1 ? "item" : "items"} · To pay
               </p>
-              <p className="text-lg font-bold tabular-nums">{formatINR(cart.breakup.total)}</p>
+              <p className="text-lg font-bold tabular-nums">{formatINR(cart.total)}</p>
             </div>
-            <Link
-              href="/checkout"
-              aria-disabled={blocked || undefined}
-              onClick={(event) => blocked && event.preventDefault()}
-              className={buttonClasses({ size: "lg", className: cn("flex-none", blocked && "pointer-events-none opacity-60") })}
-            >
-              Checkout
-            </Link>
+            {checkoutLink("flex-none", "Checkout")}
           </div>
           {blocked ? <p className="text-center text-sm text-danger">Fix the items marked above to continue.</p> : null}
-          {!user ? (
-            <p className="text-center text-sm text-ink-muted">
-              <Link href="/login?next=/cart" className="font-semibold text-primary hover:underline">
-                Sign in
-              </Link>{" "}
-              to keep this cart on every device and get Prime prices.
-            </p>
-          ) : null}
         </div>
       </div>
     );
